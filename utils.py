@@ -1,0 +1,54 @@
+import numpy as np
+
+
+def normalised_rms_error(exact, reconstructed):
+
+    """
+    Calculate normalised rms error between exact and reconstructed
+    arrays of arbitrary (but equal) dimensions
+    :param exact:
+    :param reconstructed:
+    :return:
+    """
+
+    assert np.shape(exact) == np.shape(reconstructed)
+    sum = 0
+    norm = 0
+
+    len_flat = np.prod(np.shape(exact))
+    exact = exact.reshape(len_flat)
+    reconstructed = reconstructed.reshape(len_flat)
+    for i in range(len_flat):
+        sum += (exact[i] - reconstructed[i]) * (exact[i] - reconstructed[i])
+        norm += exact[i] * exact[i]
+    return np.sqrt(sum / norm)
+
+
+def average_normalised_rms_error_flat(exact_flat, reconstructed_flat):
+
+    """
+    Returns the average normalised rms error for collection of n examples. Exact
+    input images must be pre-flattened, with each row being a different example
+    image. Reconstructed image must be a vector representing a single result
+
+    :param exact_flat: 2D array of n exact images
+    :param reconstructed_flat: 2D array of n reconstructed images
+    :param img_shape: Shape of non-flattened image
+    :return: averaged error
+    """
+
+    assert np.shape(exact_flat) == np.shape(reconstructed_flat)
+    error = 0
+    n_examples = len(exact_flat)
+    for i in range(n_examples):
+        error += normalised_rms_error(exact_flat[i],
+                                      reconstructed_flat[i])
+    error /= n_examples
+    return error
+
+
+def beep():
+    import winsound
+    Freq = 440  # Set Frequency To 2500 Hertz
+    Dur = 200  # Set Duration To 1000 ms == 1 second
+    winsound.Beep(Freq, Dur)
