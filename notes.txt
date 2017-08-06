@@ -1,2 +1,6 @@
 * More images per batch = better feature recognition
 * More batches = better reduction in noise and more accurate phase amplitude
+
+
+* Use a learning rate of approximately 1e-4 for AdamOptimizer, or 0.5 for
+GradienDescentOptimizer
