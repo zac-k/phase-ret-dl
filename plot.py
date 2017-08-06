@@ -1,14 +1,13 @@
 import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.metrics import confusion_matrix
-import matplotlib.colors
+
 
 def plot_images(images, cls_true, img_shape, cls_pred=None):
     assert len(images) == len(cls_true) == 9
 
     # Create a figure with 3x3 subplots.
     fig, axes = plt.subplots(3, 3)
-    #fig.subplots_adjust(hspace=0.3, wspace=0.3)
 
     for i, ax in enumerate(axes.flat):
         # Plot image
@@ -33,7 +32,6 @@ def plot_images_(images, labels, types):
 
     size = int(np.ceil(np.sqrt(len(images))))
     fig, axes = plt.subplots(size, size)
-    #fig.subplots_adjust(hspace=0.3, wspace=0.3)
 
     for i, ax in enumerate(axes.flat):
         # Plot image
@@ -50,17 +48,15 @@ def plot_images_(images, labels, types):
                 ax.imshow(images[i], cmap='gray')
             ax.set_xlabel(labels[i])
 
-
         # Remove tick marks from plot
         ax.set_xticks([])
         ax.set_yticks([])
-
 
     plt.show(block=False)
 
 
 def plot_image(image, type=None):
-    #assert type == 'image' or type == 'phase'
+
     if type == 'image':
         vmin = 0
         vmax = 2

@@ -1,7 +1,6 @@
 import numpy as np
 from numpy import fft
 from numpy import pi as PI
-from scipy import signal
 import copy
 import plot
 from scipy.ndimage.filters import gaussian_filter
@@ -12,11 +11,6 @@ m0 = 9.11e-31  # Electron rest mass
 e = -1.6e-19  # Electron charge
 c = 3e8  # Speed of light
 hbar = h / (2 * PI)
-
-
-
-
-
 
 
 class PhaseImagingSystem(object):
@@ -68,8 +62,9 @@ class PhaseImagingSystem(object):
 
             self.phase_exact = self._downsample(self.phase_exact)
 
-        # Set regularisation parameter and construct kernels
+        # Set regularisation parameters and construct kernels
         self.reg_tie = 0.1 / (self.image_width * self.image_size)
+        self.reg_image = 0.1
         if is_attenuating:
             self.reg_tie /= 2
         self.k_squared_kernel = self._construct_k_squared_kernel()
@@ -261,16 +256,18 @@ class PhaseImagingSystem(object):
         """
 
         if self.is_attenuating:
+            regularised_inverse_intensity = self.image_in / (self.image_in * self.image_in
+                                                             + self.reg_image * self.reg_image)
             prefactor = (1. / self.wavelength) / (2. * PI)
             derivative = self.intensity_derivative()
             self.derivative = derivative
             derivative_vec = np.zeros(list((self.image_size, self.image_size, 2)), dtype=complex)
             derivative_vec[:, :, 0] = self.convolve(derivative, self.k_kernel[:, :, 0] *
                                                     self.inverse_k_squared_kernel
-                                                    ) / self.image_in
+                                                    ) * regularised_inverse_intensity
             derivative_vec[:, :, 1] = self.convolve(derivative, self.k_kernel[:, :, 1] *
                                                     self.inverse_k_squared_kernel
-                                                    ) / self.image_in
+                                                    ) * regularised_inverse_intensity
 
             derivative_vec[:, :, 0] = fft.fftshift(fft.fft2(derivative_vec[:, :, 0]))
             derivative_vec[:, :, 1] = fft.fftshift(fft.fft2(derivative_vec[:, :, 1]))

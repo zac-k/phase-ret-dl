@@ -12,16 +12,17 @@ def normalised_rms_error(exact, reconstructed):
     """
 
     assert np.shape(exact) == np.shape(reconstructed)
-    sum = 0
+    total = 0
     norm = 0
 
-    len_flat = np.prod(np.shape(exact))
+    len_flat = np.prod(np.shape(exact), dtype=int)
     exact = exact.reshape(len_flat)
     reconstructed = reconstructed.reshape(len_flat)
+
     for i in range(len_flat):
-        sum += (exact[i] - reconstructed[i]) * (exact[i] - reconstructed[i])
+        total += (exact[i] - reconstructed[i]) * (exact[i] - reconstructed[i])
         norm += exact[i] * exact[i]
-    return np.sqrt(sum / norm)
+    return np.sqrt(total / norm)
 
 
 def average_normalised_rms_error_flat(exact_flat, reconstructed_flat):
@@ -33,7 +34,6 @@ def average_normalised_rms_error_flat(exact_flat, reconstructed_flat):
 
     :param exact_flat: 2D array of n exact images
     :param reconstructed_flat: 2D array of n reconstructed images
-    :param img_shape: Shape of non-flattened image
     :return: averaged error
     """
 
@@ -49,6 +49,6 @@ def average_normalised_rms_error_flat(exact_flat, reconstructed_flat):
 
 def beep():
     import winsound
-    Freq = 440  # Set Frequency To 2500 Hertz
-    Dur = 200  # Set Duration To 1000 ms == 1 second
-    winsound.Beep(Freq, Dur)
+    freq = 440  # Set Frequency To 2500 Hertz
+    dur = 200  # Set Duration To 1000 ms == 1 second
+    winsound.Beep(freq, dur)

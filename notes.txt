@@ -1,0 +1,2 @@
+* More images per batch = better feature recognition
+* More batches = better reduction in noise and more accurate phase amplitude

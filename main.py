@@ -28,7 +28,7 @@ def new_biases(length, init_type):
         return tf.Variable(tf.zeros([length]))
 
 
-def new_fc_layer(input,         # The previous Layer
+def new_fc_layer(in_vector,         # The previous Layer
                  num_inputs,    # Number of inputs from prev layer
                  num_outputs,   # Number of outputs
                  activation_function,      # Tensorflow activation function to use
@@ -38,7 +38,7 @@ def new_fc_layer(input,         # The previous Layer
     biases = new_biases(length=num_outputs, init_type=init_type)
 
     # Calculate output
-    layer = tf.matmul(input, weights) + biases
+    layer = tf.matmul(in_vector, weights) + biases
 
     # Rectify
     if activation_function is not None:
@@ -54,25 +54,25 @@ img_size_flat = img_size * img_size
 img_shape = (img_size, img_size)
 
 # Set size of hidden layer and whether it is used
-hidden_layer_size = img_size_flat * 10
+hidden_layer_size = 10000
 is_single_layer = False
 
 # Set mean inner potential and noise level
 mip = -17 - 0.8j
-noise_level = 0.1
+noise_level = 0.05
 
 # Create arrays to hold flattened training data
 phase_exact_flat_train = []
 phase_retrieved_flat_train = []
 
 # Set quantities for training/validation/test split
-num_train = 318
+num_train = 1224
 num_valid = 0
-num_test = 5
+num_test = 1
 
 # Import specimen files
 specimen_files = []
-specimen_path = './data/specimens/training/'
+specimen_path = './data/specimens/training2/'
 specimen_ext = '.txt'
 specimen_name = 'particle'
 for i in range(num_train + num_test):
@@ -80,17 +80,16 @@ for i in range(num_train + num_test):
 
 # Compute retrieved training phases and flatten training data
 for item in range(num_train):
-    #specimen_file = './data/specimens/005/512/particle.txt'
     specimen_file = specimen_files[np.random.randint(len(specimen_files))]
-    system_train = phase.PhaseImagingSystem(image_size=img_size,
-                                           defocus=8e-6,
-                                           image_width=150e-9,
-                                           energy=300e3,
-                                           specimen_file=specimen_files[item],
-                                           mip=mip,
-                                           is_attenuating=True,
-                                           noise_level=noise_level
-                                           )
+    system_train = phase.PhaseImagingSystem(
+           image_size=img_size,
+           defocus=8e-6,
+           image_width=150e-9,
+           energy=300e3,
+           specimen_file=specimen_files[item],
+           mip=mip,
+           is_attenuating=True,
+           noise_level=noise_level)
     system_train.generate_images()
     system_train.apodise_images()
     system_train.retrieve_phase()
@@ -118,6 +117,10 @@ for item in range(num_test):
     system_test.retrieve_phase()
     phase_exact_flat_test.append(system_test.phase_exact.real.reshape(img_size_flat))
     phase_retrieved_flat_test.append(system_test.phase_retrieved.real.reshape(img_size_flat))
+
+# Delete imaging systems now that they are no longer needed
+del system_train
+del system_test
 
 # Calculate and print average normalised rms error in test set prior to processing
 # through neural network
@@ -160,9 +163,6 @@ elif optimizer_type == 'gradient descent':
 else:
     raise ValueError('Unknown optimizer type')
 
-
-
-
 # Initialise variables
 session = tf.Session()
 session.run(tf.global_variables_initializer())
@@ -173,18 +173,30 @@ feed_dict_test = {x: phase_retrieved_flat_test,
                   }
 
 # Set batch variables
-per_batch = 10  # Number of training examples in each batch
-num_batches = int(np.floor(num_train / per_batch)) # Calculate number of batches
+batch_size = 30  # Number of training examples in each batch
+num_batches = int(np.floor(num_train / batch_size))  # Calculate number of batches
+
+# Calculate the mean of the training data for later use
+mean_exact_train = np.mean(phase_exact_flat_train, axis=0)
+
+# Store exact and reconstruced examples of training data for later use
+phase_exact_flat_train_0 = phase_exact_flat_train[0]
+phase_retrieved_flat_train_0 = phase_retrieved_flat_train[0]
 
 # Train the model
+print('Training...')
 for i in range(num_batches):
-    if (i + 1) * per_batch < num_train:
-        x_batch = phase_retrieved_flat_train[i * per_batch:(i + 1) * per_batch - 1]
-        y_true_batch = phase_exact_flat_train[i * per_batch:(i + 1) * per_batch - 1]
+    print('{0: .1%}'.format(i / num_batches)),  # Avoid new line
+    if (i + 1) * batch_size < num_train:
+        x_batch = phase_retrieved_flat_train[0:batch_size - 1]
+        y_true_batch = phase_exact_flat_train[0:batch_size - 1]
         feed_dict_train = {x: x_batch,
                            y_true: y_true_batch}
 
         session.run(optimizer, feed_dict=feed_dict_train)
+    del phase_exact_flat_train[i * batch_size:(i + 1) * batch_size - 1]
+    del phase_retrieved_flat_train[i * batch_size:(i + 1) * batch_size - 1]
+
 
 # Calculate and print average normalised rms error in test set after processing through
 # trained neural network
@@ -204,19 +216,18 @@ output_images = session.run(output, feed_dict=feed_dict_test)
 
 # Calculate average rms error between test outputs and the mean of the
 # training target images (exact phases) and print it
-mean_exact_train = np.mean(phase_exact_flat_train, axis=0)
 error_test_vs_train = 0
 for output_image in output_images:
     error_test_vs_train += np.sqrt(
                         np.sum(np.square(mean_exact_train -
-                                         output_images)) / np.sum(np.square(mean_exact_train))
+                                         output_image)) / np.sum(np.square(mean_exact_train))
                 )
 error_test_vs_train /= num_test
 print("Accuracy on ", "test input", " compared to training output: {0: .1%}".format(error_test_vs_train), sep='')
 
 # Plot images
-plot.plot_images_([np.reshape(phase_exact_flat_train[0], img_shape),
-                   np.reshape(phase_retrieved_flat_train[0], img_shape),
+plot.plot_images_([np.reshape(phase_exact_flat_train_0, img_shape),
+                   np.reshape(phase_retrieved_flat_train_0, img_shape),
                    np.reshape(mean_exact_train, img_shape),
                    np.reshape(phase_exact_flat_test[0], img_shape),
                    np.reshape(phase_retrieved_flat_test[0], img_shape),
@@ -233,6 +244,5 @@ plot.plot_images_([np.reshape(phase_exact_flat_train[0], img_shape),
                     'phase',
                     'phase',
                     'phase'])
-
 utils.beep()  # Alert user that script has finished
 show()  # Prevent plt.show(block=False) from closing plot window
