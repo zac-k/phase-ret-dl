@@ -46,18 +46,60 @@ def new_fc_layer(in_vector,         # The previous Layer
 
     return layer
 
+
+def new_conv_layer(input,
+                   num_input_channels,
+                   kernel_size,
+                   num_kernels,
+                   use_pooling=True):
+
+    # Shape of the kernels
+    shape = [kernel_size, kernel_size, num_input_channels, num_kernels]
+
+    # Create weights and biases
+    weights = new_weights(shape=shape, init_type='random')
+    biases = new_biases(length=num_kernels, init_type='random')
+
+    layer = tf.nn.conv2d(input=input,
+                         filter=weights,
+                         strides=[1, 1, 1, 1],
+                         padding='SAME')
+
+    layer += biases
+
+    if use_pooling:
+        layer = tf.nn.max_pool(value=layer,
+                               ksize=[1, 2, 2, 1],
+                               strides=[1, 2, 2, 1],
+                               padding='SAME')
+
+        layer = tf.nn.relu(layer)
+
+        return layer, weights
+
+
+def flatten_layer(layer):
+
+    # layer_shape should be [num_images, img_height, img_width, num_channels]
+    layer_shape = layer.get_shape()
+    num_features = layer_shape[1:4].num_elements()
+    layer_flat = tf.reshape(layer, [-1, num_features])
+    # layer_flat is not [num_images, img_height * img_width * num_channels]
+    return layer_flat, num_features
+
+
 np.set_printoptions(threshold=np.inf)
 
 # Create dict of hyperparameter values, each of which will be assigned to the appropriate
 # variable closer to where they are used.
-hyperparameters = {'Hidden Layer Size': 20000,
+hyperparameters = {'Hidden Layer Size': 50000,
                    'Number of Hidden Layers': 1,
                    'Input Type': 'phases',
-                   'Train/Valid/Test Split': [1634, 0, 1],
-                   'Batch Size': 30,
+                   'Train/Valid/Test Split': [1162, 0, 1],
+                   'Batch Size': 50,
                    'Optimiser Type': 'gradient descent',
-                   'Learning Rate': 0.5}
-
+                   'Learning Rate': 0.5,
+                   'Use Convolutional Layers': False}
 
 # Set image size and shape
 img_size = 64
@@ -66,6 +108,10 @@ img_shape = (img_size, img_size)
 
 # Set size of hidden layers
 hidden_layer_size = hyperparameters['Hidden Layer Size']
+
+# Set parameters for the convolutional layers
+kernel_size = [5, 16]
+num_kernels = [16, 36]
 
 # Set mean inner potential and noise level
 mip = -17 - 0.8j
@@ -85,7 +131,7 @@ num_train, num_valid, num_test = hyperparameters['Train/Valid/Test Split']
 
 # Import specimen files
 specimen_files = []
-specimen_path = './data/specimens/training2/'
+specimen_path = './data/specimens/training3/'
 specimen_ext = '.txt'
 specimen_name = 'particle'
 for i in range(num_train + num_test):
@@ -147,9 +193,7 @@ for item in range(num_test):
                                system_test.image_in.real.reshape(img_size_flat),
                                system_test.image_over.real.reshape(img_size_flat))))
 
-# Delete imaging systems now that they are no longer needed
-del system_train
-del system_test
+
 
 # Calculate and print average normalised rms error in test set prior to processing
 # through neural network
@@ -159,22 +203,43 @@ print("Accuracy on test set (pre adjustment): {0: .1%}".format(error))
 # Determine number of nodes in input layer
 if input_type == 'images':
     input_size = 3 * img_size_flat
+    num_channels = 3
 elif input_type == 'phases':
     input_size = img_size_flat
+    num_channels = 1
 
 # Define placeholder variables
 x = tf.placeholder(tf.float32, [None, input_size])
 y_true = tf.placeholder(tf.float32, [None, img_size_flat])
 
-# Define layers
+# Define convolutional layers
+if hyperparameters['Use Convolutional Layers']:
+    x_for_conv = tf.reshape(x, [-1, input_size, input_size, num_channels])
+    layer_conv1, weights_conv1 = new_conv_layer(input=x_for_conv,
+                                                num_input_channels=num_channels,
+                                                kernel_size=kernel_size[0],
+                                                num_kernels=num_kernels[0],
+                                                use_pooling=True)
+    layer_conv2, weights_conv2 = new_conv_layer(input=layer_conv1,
+                                                num_input_channels=num_kernels[0],
+                                                kernel_size=kernel_size[1],
+                                                num_kernels=num_kernels[1],
+                                                use_pooling=True)
+    input_for_first_fc_layer, num_inputs_for_first_fc_layer = flatten_layer(layer_conv2)
+else:
+    input_for_first_fc_layer = x
+    num_inputs_for_first_fc_layer = input_size
+
+
+# Define fully connected layers
 num_hidden_layers = hyperparameters['Number of Hidden Layers']
 hidden_layers = []
 for i in range(num_hidden_layers):
     hidden_layers.append(tf.Variable(tf.zeros([hidden_layer_size])))
 for i in range(num_hidden_layers):
     if i == 0:
-        hidden_input = x
-        hidden_input_size = input_size
+        hidden_input = input_for_first_fc_layer
+        hidden_input_size = num_inputs_for_first_fc_layer
     else:
         hidden_input = hidden_layers[i - 1]
         hidden_input_size = hidden_layer_size
@@ -185,8 +250,8 @@ for i in range(num_hidden_layers):
                                     init_type='identity')
 
 if num_hidden_layers == 0:
-    penultimate_layer = x
-    penultimate_layer_size = input_size
+    penultimate_layer = input_for_first_fc_layer
+    penultimate_layer_size = num_inputs_for_first_fc_layer
 else:
     penultimate_layer = hidden_layers[num_hidden_layers - 1]
     penultimate_layer_size = hidden_layer_size
@@ -233,8 +298,8 @@ num_batches = int(np.floor(num_train / batch_size))  # Calculate number of batch
 mean_exact_train = np.mean(phase_exact_flat_train, axis=0)
 
 # Store exact and reconstruced examples of training data for later use
-phase_exact_flat_train_0 = phase_exact_flat_train[0]
-phase_retrieved_flat_train_0 = phase_retrieved_flat_train[0]
+phase_exact_flat_train_0 = phase_exact_flat_train[1]
+phase_retrieved_flat_train_0 = phase_retrieved_flat_train[1]
 
 # Train the model
 print('Training...')
@@ -277,24 +342,29 @@ for output_image in output_images:
 error_test_vs_train /= num_test
 print("Accuracy on ", "test input", " compared to training output: {0: .1%}".format(error_test_vs_train), sep='')
 
+result_for_printing = []
+result_for_printing.append(plot.PrintableData(np.reshape(phase_exact_flat_train_0, img_shape),
+                                              'training example',
+                                              'phase'))
+result_for_printing.append(plot.PrintableData(np.reshape(phase_retrieved_flat_train_0, img_shape),
+                                              'training example (retrieved)',
+                                              'phase',
+                                              comment=str(error)))
+result_for_printing.append(plot.PrintableData(np.reshape(mean_exact_train, img_shape),
+                                              'mean training example',
+                                              'phase'))
+result_for_printing.append(plot.PrintableData(np.reshape(phase_exact_flat_test[0], img_shape),
+                                              'test example',
+                                              'phase'))
+result_for_printing.append(plot.PrintableData(np.reshape(phase_retrieved_flat_test[0], img_shape),
+                                              'training example (retrieved)',
+                                              'phase',
+                                              comment=""))
+result_for_printing.append(plot.PrintableData(output_images[0].reshape(img_shape),
+                                              'test example (ret_adj)',
+                                              'phase',
+                                              comment=""))
 # Plot images
-plot.plot_images_([np.reshape(phase_exact_flat_train_0, img_shape),
-                   np.reshape(phase_retrieved_flat_train_0, img_shape),
-                   np.reshape(mean_exact_train, img_shape),
-                   np.reshape(phase_exact_flat_test[0], img_shape),
-                   np.reshape(phase_retrieved_flat_test[0], img_shape),
-                   output_images[0].reshape(img_shape)],
-                   ['training example',
-                    'training example (retrieved)',
-                    'mean training example',
-                    'test example',
-                    'test example (retrieved)',
-                    'test example (ret_adj)'],
-                   ['phase',
-                    'phase',
-                    'phase',
-                    'phase',
-                    'phase',
-                    'phase'])
+plot.plot_images(result_for_printing)
 utils.beep()  # Alert user that script has finished
 show()  # Prevent plt.show(block=False) from closing plot window

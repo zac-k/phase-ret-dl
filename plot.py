@@ -3,23 +3,26 @@ import numpy as np
 from sklearn.metrics import confusion_matrix
 
 
-def plot_images(images, cls_true, img_shape, cls_pred=None):
-    assert len(images) == len(cls_true) == 9
+def plot_images(data):
 
-    # Create a figure with 3x3 subplots.
-    fig, axes = plt.subplots(3, 3)
+    size = int(np.ceil(np.sqrt(len(data))))
+    fig, axes = plt.subplots(size, size)
 
     for i, ax in enumerate(axes.flat):
         # Plot image
-        ax.imshow(images[i].reshape(img_shape), cmap='binary')
-
-        # Show true and predicted classes.
-        if cls_pred is None:
-            xlabel = "True: {0}".format(cls_true[i])
-        else:
-            xlabel = "True: {0}, Pred: {1}".format(cls_true[i], cls_pred[i])
-
-        ax.set_xlabel(xlabel)
+        if i < len(data):
+            if data[i].type == 'image':
+                vmin = 0
+                vmax = 2
+                ax.imshow(data[i].image, cmap='gray', vmin=vmin, vmax=vmax)
+            elif data[i].type == 'phase':
+                vmin = -4
+                vmax = 4
+                ax.imshow(data[i].image, cmap='gray', vmin=vmin, vmax=vmax)
+            else:
+                ax.imshow(data[i].image, cmap='gray')
+            ax.set_xlabel(data[i].title)
+            ax.set_ylabel(data[i].comment)
 
         # Remove tick marks from plot
         ax.set_xticks([])
@@ -109,3 +112,12 @@ def multiplot(plot1,  plot2, plot3, plot4):
 
 def show():
     plt.show()
+
+class PrintableData(object):
+
+    def __init__(self, image, title, type, comment=''):
+
+        self.image = image
+        self.title = title
+        self.type = type
+        self.comment = comment
