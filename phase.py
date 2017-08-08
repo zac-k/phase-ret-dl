@@ -2,6 +2,7 @@ import numpy as np
 from numpy import fft
 from numpy import pi as PI
 import copy
+import pyprind
 import plot
 from scipy.ndimage.filters import gaussian_filter
 
@@ -70,6 +71,137 @@ class PhaseImagingSystem(object):
         self.k_squared_kernel = self._construct_k_squared_kernel()
         self.inverse_k_squared_kernel = self._construct_inverse_k_squared_kernel()
         self.k_kernel = self._construct_k_kernel()
+
+    def build_atom_locations(self):
+        """
+        Create a list containing atom locations and their associated atomic numbers.
+        Must be called AFTER upscaling
+        :return:
+        """
+
+        # Size of unit cell in angstroms
+        Sc = [8.32, 8.32, 8.32]
+
+        # Length of each side of cubic region containing specimen
+        aA = a * 1e10
+
+        # Number of unit cells in each dimension
+        Nc = [aA/Sc[0], aA/Sc[1], aA/Sc[2]]
+
+        # Number of voxels across one dimension
+        M = len(self.specimen)
+
+        atoms_read = 0
+        atoms_in_cell = 56
+        elements = 2
+        n_atoms = Nc[0] * Nc[1] * Nc[2] * atoms_in_cell
+
+        loc = [0, 0, 0]
+
+        # Each pair is the atomic number followed by the number of atoms of this element
+        atomic_numbers = [[26, 24], [8, 32]]
+
+        # Array containing the atom locations within a cell. The crystal structure here
+        # is magnetite.
+        atom_locations = [
+                            # Fe2 +
+                            [0.000 * Sc[0], 0.000 * Sc[1], 0.000 * Sc[2]],
+                            [0.500 * Sc[0], 0.500 * Sc[1], 0.000 * Sc[2]],
+                            [0.000 * Sc[0], 0.500 * Sc[1], 0.500 * Sc[2]],
+                            [0.500 * Sc[0], 0.000 * Sc[1], 0.500 * Sc[2]],
+
+                            [0.250 * Sc[0], 0.250 * Sc[1], 0.250 * Sc[2]],
+                            [0.250 * Sc[0], 0.750 * Sc[1], 0.750 * Sc[2]],
+                            [0.750 * Sc[0], 0.750 * Sc[1], 0.250 * Sc[2]],
+                            [0.750 * Sc[0], 0.250 * Sc[1], 0.750 * Sc[2]],
+
+                            # Fe3 +
+                            [0.125 * Sc[0], 0.375 * Sc[1], 0.875 * Sc[2]],
+                            [0.375 * Sc[0], 0.125 * Sc[1], 0.875 * Sc[2]],
+                            [0.625 * Sc[0], 0.875 * Sc[1], 0.875 * Sc[2]],
+                            [0.875 * Sc[0], 0.625 * Sc[1], 0.875 * Sc[2]],
+
+                            [0.125 * Sc[0], 0.125 * Sc[1], 0.625 * Sc[2]],
+                            [0.375 * Sc[0], 0.375 * Sc[1], 0.625 * Sc[2]],
+                            [0.625 * Sc[0], 0.625 * Sc[1], 0.625 * Sc[2]],
+                            [0.875 * Sc[0], 0.875 * Sc[1], 0.625 * Sc[2]],
+
+                            [0.125 * Sc[0], 0.875 * Sc[1], 0.375 * Sc[2]],
+                            [0.375 * Sc[0], 0.625 * Sc[1], 0.375 * Sc[2]],
+                            [0.625 * Sc[0], 0.375 * Sc[1], 0.375 * Sc[2]],
+                            [0.875 * Sc[0], 0.125 * Sc[1], 0.375 * Sc[2]],
+
+                            [0.125 * Sc[0], 0.625 * Sc[1], 0.125 * Sc[2]],
+                            [0.375 * Sc[0], 0.875 * Sc[1], 0.125 * Sc[2]],
+                            [0.625 * Sc[0], 0.125 * Sc[1], 0.125 * Sc[2]],
+                            [0.875 * Sc[0], 0.375 * Sc[1], 0.125 * Sc[2]],
+
+                            # O2 -
+                            [0.125 * Sc[0], 0.125 * Sc[1], 0.875 * Sc[2]],
+                            [0.125 * Sc[0], 0.625 * Sc[1], 0.875 * Sc[2]],
+                            [0.375 * Sc[0], 0.375 * Sc[1], 0.875 * Sc[2]],
+                            [0.375 * Sc[0], 0.875 * Sc[1], 0.875 * Sc[2]],
+                            [0.625 * Sc[0], 0.125 * Sc[1], 0.875 * Sc[2]],
+                            [0.625 * Sc[0], 0.625 * Sc[1], 0.875 * Sc[2]],
+                            [0.875 * Sc[0], 0.375 * Sc[1], 0.875 * Sc[2]],
+                            [0.875 * Sc[0], 0.875 * Sc[1], 0.875 * Sc[2]],
+
+                            [0.125 * Sc[0], 0.375 * Sc[1], 0.625 * Sc[2]],
+                            [0.125 * Sc[0], 0.875 * Sc[1], 0.625 * Sc[2]],
+                            [0.375 * Sc[0], 0.125 * Sc[1], 0.625 * Sc[2]],
+                            [0.375 * Sc[0], 0.625 * Sc[1], 0.625 * Sc[2]],
+                            [0.625 * Sc[0], 0.375 * Sc[1], 0.625 * Sc[2]],
+                            [0.625 * Sc[0], 0.875 * Sc[1], 0.625 * Sc[2]],
+                            [0.875 * Sc[0], 0.125 * Sc[1], 0.625 * Sc[2]],
+                            [0.875 * Sc[0], 0.625 * Sc[1], 0.625 * Sc[2]],
+
+                            [0.125 * Sc[0], 0.125 * Sc[1], 0.375 * Sc[2]],
+                            [0.125 * Sc[0], 0.625 * Sc[1], 0.375 * Sc[2]],
+                            [0.375 * Sc[0], 0.375 * Sc[1], 0.375 * Sc[2]],
+                            [0.375 * Sc[0], 0.875 * Sc[1], 0.375 * Sc[2]],
+                            [0.625 * Sc[0], 0.125 * Sc[1], 0.375 * Sc[2]],
+                            [0.625 * Sc[0], 0.625 * Sc[1], 0.375 * Sc[2]],
+                            [0.875 * Sc[0], 0.375 * Sc[1], 0.375 * Sc[2]],
+                            [0.875 * Sc[0], 0.875 * Sc[1], 0.375 * Sc[2]],
+
+                            [0.125 * Sc[0], 0.375 * Sc[1], 0.125 * Sc[2]],
+                            [0.125 * Sc[0], 0.875 * Sc[1], 0.125 * Sc[2]],
+                            [0.375 * Sc[0], 0.125 * Sc[1], 0.125 * Sc[2]],
+                            [0.375 * Sc[0], 0.625 * Sc[1], 0.125 * Sc[2]],
+                            [0.625 * Sc[0], 0.375 * Sc[1], 0.125 * Sc[2]],
+                            [0.625 * Sc[0], 0.875 * Sc[1], 0.125 * Sc[2]],
+                            [0.875 * Sc[0], 0.125 * Sc[1], 0.125 * Sc[2]],
+                            [0.875 * Sc[0], 0.625 * Sc[1], 0.125 * Sc[2]],
+                            ]
+
+        location_list = []
+        print("Generating specimen...")
+        progress_bar = pyprind.ProgBar(Nc[0])
+        for t1 in range(0, Nc[0]):
+            for t2 in range(0, Nc[1]):
+                for t3 in range(0, Nc[2]):
+                    for element in range(0, elements):
+                        for atom in range(0, atomic_numbers[element][1]):
+                            loc[0] = -aA / 2 + float(t1) * Sc[0] + \
+                                     atom_locations[atom + element * atomic_numbers[0][1]][0]
+                            loc[1] = -aA / 2 + float(t1) * Sc[1] + \
+                                     atom_locations[atom + element * atomic_numbers[0][1]][1]
+                            loc[2] = -aA / 2 + float(t1) * Sc[2] + \
+                                     atom_locations[atom + element * atomic_numbers[0][1]][2]
+                            i = int(round(loc[0] * M / aA + M / 2))
+                            j = int(round(loc[1] * M / aA + M / 2))
+                            k = int(round(loc[2] * M / aA + M / 2))
+
+                            if self.specimen != 0:
+                                location_list.append(loc + [atomic_numbers[element][0]])
+                                atoms_read += 1
+
+            progress_bar.update()
+
+        return location_list
+
+
+
 
     def _add_noise(self, image):
         for i in range(len(image)):
@@ -285,6 +417,10 @@ class PhaseImagingSystem(object):
                                      self.inverse_k_squared_kernel)
             self.phase_retrieved = prefactor * filtered
         return
+
+
+
+
 
 
 
