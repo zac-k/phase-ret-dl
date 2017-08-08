@@ -242,11 +242,14 @@ class PhaseImagingSystem(object):
     def dot_fields(field1, field2):
         return field1[:, :, 0] * field2[:, :, 0] + field1[:, :, 1] * field2[:, :, 1]
 
-    def apodise_images(self):
-        for image in [self.image_under,
-                      self.image_in,
-                      self.image_over]:
-            self.apodise(image)
+    def apodise_images(self, rad_sup):
+        self.image_under = self.apodise(self.image_under, rad_sup)
+        self.image_in = self.apodise(self.image_in, rad_sup)
+        self.image_over = self.apodise(self.image_over, rad_sup)
+
+    def apodise_phases(self, rad_sup):
+        self.phase_exact = self.apodise(self.phase_exact, rad_sup)
+        self.phase_retrieved = self.apodise(self.phase_retrieved, rad_sup)
 
     def retrieve_phase(self):
         """
