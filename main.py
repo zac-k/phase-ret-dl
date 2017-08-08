@@ -95,11 +95,12 @@ np.set_printoptions(threshold=np.inf)
 hyperparameters = {'Hidden Layer Size': 50000,
                    'Number of Hidden Layers': 1,
                    'Input Type': 'phases',
-                   'Train/Valid/Test Split': [1162, 0, 1],
+                   'Train/Valid/Test Split': [2002, 0, 1],
                    'Batch Size': 50,
                    'Optimiser Type': 'gradient descent',
                    'Learning Rate': 0.5,
                    'Use Convolutional Layers': False}
+imaging_parameters = {'Window Function Radius': 0.5}
 
 # Set image size and shape
 img_size = 64
@@ -115,7 +116,7 @@ num_kernels = [16, 36]
 
 # Set mean inner potential and noise level
 mip = -17 - 0.8j
-noise_level = 0.05
+noise_level = 0.15
 
 # Set whether to use images or retrieved phases as input data
 input_type = hyperparameters['Input Type']
@@ -153,8 +154,9 @@ for item in range(num_train):
            is_attenuating=True,
            noise_level=noise_level)
     system_train.generate_images()
-    system_train.apodise_images()
+    system_train.apodise_images(imaging_parameters['Window Function Radius'])
     system_train.retrieve_phase()
+    system_train.apodise_phases(imaging_parameters['Window Function Radius'])
     phase_exact_flat_train.append(system_train.phase_exact.real.reshape(img_size_flat))
     phase_retrieved_flat_train.append(system_train.phase_retrieved.real.reshape(img_size_flat))
     if input_type == 'images':
@@ -184,8 +186,9 @@ for item in range(num_test):
                                            noise_level=noise_level
                                            )
     system_test.generate_images()
-    system_test.apodise_images()
+    system_test.apodise_images(imaging_parameters['Window Function Radius'])
     system_test.retrieve_phase()
+    system_test.apodise_phases(imaging_parameters['Window Function Radius'])
     phase_exact_flat_test.append(system_test.phase_exact.real.reshape(img_size_flat))
     phase_retrieved_flat_test.append(system_test.phase_retrieved.real.reshape(img_size_flat))
     if input_type == 'images':
