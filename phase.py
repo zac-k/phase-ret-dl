@@ -4,6 +4,8 @@ from numpy import pi as PI
 import copy
 import pyprind, sys
 import random as rnd
+from numba import jit
+np.set_printoptions(threshold=10)
 
 
 h = 6.63e-34  # Planck's constant
@@ -56,6 +58,7 @@ class PhaseImagingSystem(object):
         self.atom_locations = []
         self.use_multislice = use_multislice
 
+        self.nbeams = 0
 
 
         if is_attenuating:
@@ -79,18 +82,17 @@ class PhaseImagingSystem(object):
 
         while len(self.phase_exact) > image_size:
             self.phase_exact = self._downsample(self.phase_exact)
+        while len(self.phase_exact) < image_size:
+            self.phase_exact = self._upsample(self.phase_exact)
 
         # Set regularisation parameters and construct kernels
         self.reg_tie = 0.1 / (self.image_width * self.image_size)
         self.reg_image = 0.1
-        if is_attenuating:
-            self.reg_tie /= 2
         self.k_squared_kernel = self._construct_k_squared_kernel()
         self.inverse_k_squared_kernel = self._construct_inverse_k_squared_kernel()
         self.k_kernel = self._construct_k_kernel()
         if use_multislice:
-            #while len(self.specimen) < self.M:
-                #self.specimen = self._upsample3d(self.specimen)
+
             self.atom_locations = self.build_atom_locations()
             random_axis = PhaseImagingSystem.generate_random_axis()
             random_angle = rnd.uniform(0, 2 * PI)
@@ -98,6 +100,25 @@ class PhaseImagingSystem(object):
                                          axis=random_axis,
                                          angle=random_angle)
             print("done")
+
+    @staticmethod
+    def _upsample(input_image):
+        nx = len(input_image)
+        ny = len(input_image[0])
+        output = np.zeros((2 * nx, 2 * ny), dtype=complex)
+        for i in range(nx - 1):
+            for j in range(ny - 1):
+                output[2 * i, 2 * j] = input_image[i, j]
+                output[2 * i + 1, 2 * j] = (input_image[i, j] + input_image[i + 1, j]) / 2
+                output[2 * i, 2 * j + 1] = (input_image[i, j] + input_image[i, j + 1]) / 2
+                output[2 * i + 1, 2 * j + 1] = (input_image[i, j] +
+                                                input_image[i + 1, j] +
+                                                input_image[i, j + 1] +
+                                                input_image[i + 1, j + 1]) / 4
+        return output
+
+
+
 
     @staticmethod
     def generate_random_axis():
@@ -250,49 +271,34 @@ class PhaseImagingSystem(object):
                        np.cos(angle) + axis[2] * axis[2] * (1 - np.cos(angle))]])
         return r
 
-
-    @staticmethod
-    def freqn(M, aA):
-
-        xo = np.array([])
-        ko = np.array([])
-        ko2 = np.array([])
+    def freqn(self, M, aA, k2max):
+        xo = np.arange(M) * aA / (M - 1)
         imid = M / 2
+        ko = (np.arange(M) - imid) / aA
+        ko2 = np.square(ko)
+        window = np.zeros((M, M), dtype=complex)
         for i in range(M):
-            xo = np.append(xo, (i * aA) / (M - 1))
-            if i > imid:
-                ko = np.append(ko, (i - M) / aA)
-            else:
-                ko = np.append(ko, i / aA)
-            ko2 = np.append(ko2, ko[i] * ko[i])
+            for j in range(M):
+                if ko2[i] + ko2[j] < k2max:
+                    window[i, j] = 1
+                    self.nbeams += 1
 
-        return ko, ko2, xo
+        window = fft.ifftshift(window)
+        ko2 = fft.ifftshift(ko2)
+        return ko2, window
 
     @staticmethod
-    def bubble_sort_by_z(x, y, z, z_number):
-        print("Sorting atoms by depth...")
-        prog_bar = pyprind.ProgBar(len(x), sys.stdout)
-        for i in range(len(x)):
-            prog_bar.update()
-            for j in range(len(x) - 1 - i):
-                if z[j] > z[j+1]:
-                    xtemp = x[j]
-                    x[j] = x[j+1]
-                    x[j+1] + xtemp
-
-                    ytemp = y[j]
-                    y[j] = y[j + 1]
-                    y[j + 1] + ytemp
-
-                    ztemp = z[j]
-                    z[j] = z[j + 1]
-                    z[j + 1] + ztemp
-
-                    znumbertemp = z_number[j]
-                    z_number[j] = z_number[j + 1]
-                    z_number[j + 1] + znumbertemp
-
-        return x, y, z, z_number
+    def sort_by_z(x, y, z, z_number):
+        """
+        Sorts atoms from lowest to highest z-depth
+        :param x:
+        :param y:
+        :param z:
+        :param z_number:
+        :return:
+        """
+        a = np.vstack((x, y, z, z_number))
+        return a[:, a[2, :].argsort()]
 
     def sigma(self):
         """
@@ -307,6 +313,7 @@ class PhaseImagingSystem(object):
         return 2 * PI * x / (wl * self.energy)
 
     @staticmethod
+    @jit
     def bessi0(x):
 
         i0a = [1.0, 3.5156229, 3.0899424, 1.2067492,
@@ -333,6 +340,7 @@ class PhaseImagingSystem(object):
         return sum
 
     @staticmethod
+    @jit
     def bessk0(x):
 
         k0a = [-0.57721566, 0.42278420, 0.23069756,
@@ -359,6 +367,7 @@ class PhaseImagingSystem(object):
         return sum
 
     @staticmethod
+    @jit
     def vzatom(z, radius):
 
         # Lorenzian, Gaussian constants
@@ -394,6 +403,7 @@ class PhaseImagingSystem(object):
         return al * suml + ag * sumg
 
     @staticmethod
+    @jit
     def splinh(x, y, b, c, d, n):
 
         if n < 4:
@@ -420,6 +430,8 @@ class PhaseImagingSystem(object):
 
         nm1 = n - 1
         nm4 = n - 4
+
+
 
         for i in range(nm1):
             if m54 + m32 > SMALL:
@@ -450,6 +462,7 @@ class PhaseImagingSystem(object):
         return x, y, b, c, d
 
     @staticmethod
+    @jit
     def seval(x, y, b, c, d, n, x0):
         # Exit if x0 is outside the spline range
         n = int(n)
@@ -493,7 +506,6 @@ class PhaseImagingSystem(object):
 
         # Spline interpolation coefficient
         spline_init = 0
-        splinx = np.zeros(nrmax)
         spliny = np.zeros((nzmax, nrmax))
         splinb = np.zeros((nzmax, nrmax))
         splinc = np.zeros((nzmax, nrmax))
@@ -502,14 +514,11 @@ class PhaseImagingSystem(object):
         if spline_init == 0:
             # Generate a set of logarithmic r values
             dlnr = np.log(rmax / rmin) / (nrmax - 1)
-            for i in range(nrmax):
-                splinx[i] = rmin * np.exp(i * dlnr)
-            for i in range(nrmax):
-                splinx[i] * splinx[i]
+            iv = np.arange(nrmax)
+            splinx = rmin * np.exp(iv * dlnr)
+            splinx = splinx * splinx
 
             nspline = np.zeros(nzmax)
-            for i in range(nzmax):
-                nspline[i] = 0
             spline_init = 1
 
         iz = z - 1
@@ -517,9 +526,9 @@ class PhaseImagingSystem(object):
             print("Bad atomic number {0} in vz_atom_lut()".format(z))
         # If this atomic number has not been called before, generate the spline coefficients
         if nspline[iz] == 0:
+            r = np.sqrt(splinx)
             for i in range(nrmax):
-                r = np.sqrt(splinx[i])
-                spliny[iz, i] = PhaseImagingSystem.vzatom(z, r)
+                spliny[iz, i] = PhaseImagingSystem.vzatom(z, r[i])
             nspline[iz] = nrmax
             splinx, spliny[iz], splinb[iz], splinc[iz], splind[iz] = PhaseImagingSystem.splinh(splinx,
                                                                                                spliny[iz],
@@ -539,42 +548,80 @@ class PhaseImagingSystem(object):
                                       rsq)
         return vz
 
-    def tratom(self, trans, x, y, z_number, i, scalex, idx, rmax2, rminsq):
+    @jit
+    def tratoms_old(self, trans, x, y, z_number, scalex, scaley, idx, rmax2, rminsq, na):
         M = self.M
-        ixo = int(x[i] / scalex)
-        iyo = int(y[i] / scalex)
+        ixo = x / scalex
+        iyo = y / scaley
+        ixo = ixo.astype(int)
+        iyo = iyo.astype(int)
         nx1 = ixo - idx
         nx2 = ixo + idx
         ny1 = iyo - idx
         ny2 = iyo + idx
 
-        for ix in range(nx1, nx2 + 1):
-            rx2 = x[i] - float(ix) * scalex
-            rx2 = rx2 * rx2
-            ixw = ix
-            while ixw < 0:
-                ixw = ixw + M
-            ixw = ixw % M
-            for iy in range(ny1, ny2 + 1):
-                rsq = y[i] - float(iy) * scalex
-                rsq = rx2 + rsq * rsq
-                if rsq <= rmax2:
-                    iyw = iy
-                    while iyw < 0:
-                        iyw = iyw + M
-                    iyw = iyw % M
-                    if rsq < rminsq:
-                        rsq = rminsq
-                    vz = PhaseImagingSystem.vz_atom_lut(z_number[i], rsq)
-                    trans[ixw, iyw] += vz
 
-    def trlayer(self, x, y, z, z_number, num_atoms, aA, trans, k2, k2max):
+
+        prog_bar = pyprind.ProgBar(na, stream=sys.stdout)
+        for i in range(na):
+            prog_bar.update()
+            for ix in range(nx1[i], nx2[i] + 1):
+                rx2 = x[i] - float(ix) * scalex
+                rx2 = rx2 * rx2
+                ixw = ix % M
+                for iy in range(ny1[i], ny2[i] + 1):
+                    rsq = y[i] - float(iy) * scalex
+                    rsq = rx2 + rsq * rsq
+                    if rsq <= rmax2:
+                        iyw = iy % M
+                        if rsq < rminsq:
+                            rsq = rminsq
+                        vz = PhaseImagingSystem.vz_atom_lut(z_number[i], rsq)
+                        trans[ixw, iyw] += vz
+
+    @jit
+    def tratoms(self, trans, x, y, z_number, scalex, scaley, idx, rmax2, rminsq, na):
+        M = self.M
+        ixo = x / scalex
+        iyo = y / scaley
+        ixo = ixo.astype(int)
+        iyo = iyo.astype(int)
+        nx1 = ixo - idx
+        nx2 = ixo + idx
+        ny1 = iyo - idx
+        ny2 = iyo + idx
+
+        prog_bar = pyprind.ProgBar(na, stream=sys.stdout)
+        for i in range(na):
+            ixv = np.arange(nx1[i], nx2[i] + 1)
+            ixw = np.mod(ixv, M)
+            iyv = np.arange(ny1[i], ny2[i] + 1)
+            iyw = np.mod(iyv, M)
+            prog_bar.update()
+            rx2 = x[i] - ixv.astype(float) * scalex
+            rx2 = rx2 * rx2
+            iyv = np.arange(ny1[i], ny2[i] + 1)
+            ry2 = y[i] - iyv.astype(float) * scaley
+            ry2 = ry2 * ry2
+            rsqx, rsqy = np.meshgrid(rx2, ry2, indexing='ij')
+            rsq = rsqx + rsqy
+            rsq = np.where(rsq >= rminsq, rsq, rminsq)
+
+            for ix in range(nx1[i], nx2[i] + 1):
+                for iy in range(ny1[i], ny2[i] + 1):
+                    if rsq[ix - nx1[i], iy - ny1[i]] <= rmax2:
+                        vz = PhaseImagingSystem.vz_atom_lut(z_number[i], rsq[ix - nx1[i], iy - ny1[i]])
+                        trans[ixw[ix - nx1[i]], iyw[iy - ny1[i]]] += vz
+
+    @jit
+    def trlayer(self, x, y, z, z_number, na, aA, trans, window):
 
         M = self.M
         rmax = 3  # Maximum atomic radius in Angstrom
         rmax2 = rmax * rmax
         scale = self.sigma()  # in 1 / (volt-Anstroms)
         scalex = aA / M
+        scaley = aA / M
 
         # Minimum radius (for regularisation)
         rmin = aA / M
@@ -584,30 +631,18 @@ class PhaseImagingSystem(object):
 
         idx = int(M * rmax / aA) + 1
         print("Building Transmission Layer")
-        prog_bar = pyprind.ProgBar(num_atoms, stream=sys.stdout)
-        for i in range(num_atoms):
-            prog_bar.update()
-            self.tratom(trans, x, y, z_number, i, scalex, idx, rmax2, rminsq)
+        #
+        #for i in range(num_atoms):
+            #
+        self.tratoms(trans, x, y, z_number, scalex, scaley, idx, rmax2, rminsq, na)
 
         # Convert phase to complex transmission function
-        tot = 0
-        for i in range(M):
-            for j in range(M):
-                vz = scale * trans[i, j].real
-                tot += vz
-                trans[i, j] = np.cos(vz) + np.sin(vz) * 1j
+        vz = scale * trans.real
+        trans = np.cos(vz) + np.sin(vz)
 
         # Bandwidth limit the transmission function
-        nbeams = 0
         trans = fft.fft2(trans)
-
-        for i in range(M):
-            for j in range(M):
-                k2_ = k2[j] + k2[i]
-                if k2_ < k2max:
-                    nbeams += 1
-                else:
-                    trans[i, j] = 0 + 0j
+        trans = trans * window
         trans = fft.ifft2(trans)
         return trans
 
@@ -1858,23 +1893,17 @@ class PhaseImagingSystem(object):
         PhaseImagingSystem.fparams = fparams
         return (nzmax - nzmin + 1) * npmax
 
-
-
     def transmit_wave(self, wave, trans):
-        M = self.M
-        for i in range(M):
-            for j in range(M):
-                wave[i, j] = wave[i, j].real * trans[i, j].real - wave[i, j].imag * trans[i, j].imag \
-                            + (wave[i, j].real * trans[i, j].imag + wave[i, j].imag * trans[i, j].real) \
-                              * 1j
-
+        wave = wave.real * trans.real - wave.imag * trans.imag + (wave.real * trans.imag + wave.imag
+                                                                 * trans.real) * 1j
         return wave
+
 
     def propagate_wave(self, wave, propx, propy, k2, k2max):
         M = self.M
 
         for i in range(M):
-            if k2[i] < k2max:
+            if True:#k2[i] < k2max:
                 pxr = propx[i].real
                 pxi = propx[i].imag
                 for j in range(M):
@@ -2003,7 +2032,7 @@ class PhaseImagingSystem(object):
         print("Bandwidth limited to a real space resolution of {0} Angstroms".format(1 / k2max))
         k2max = k2max * k2max
 
-        k, k2, pos = self.freqn(M, aA)
+        k2, window = self.freqn(M, aA, k2max)
         propx = np.zeros(M, dtype=complex)
         propy = np.zeros(M, dtype=complex)
 
@@ -2019,7 +2048,7 @@ class PhaseImagingSystem(object):
             for j in range(M):
                 wave[i, j] = 1 + 0j
 
-        x, y, z, z_number = self.bubble_sort_by_z(x, y, z, z_number)
+        x, y, z, z_number = self.sort_by_z(x, y, z, z_number)
         zmin = z[0]
         zmax = z[num_atoms-1]
 
@@ -2045,7 +2074,7 @@ class PhaseImagingSystem(object):
                                          y[istart:num_atoms],
                                          z[istart:num_atoms],
                                          z_number[istart:num_atoms],
-                                         int(na), aA, trans, k2, k2max)
+                                         na, aA, trans, window)
 
                     print("Transmit wave...")
                     wave = self.transmit_wave(wave, trans)
@@ -2064,9 +2093,6 @@ class PhaseImagingSystem(object):
             self.lowest_integrated_intensity = integrated_intensity
         return fft.ifftshift(wave)
 
-
-
-
     def _add_noise(self, image):
         for i in range(len(image)):
             for j in range(len(image[0])):
@@ -2076,9 +2102,6 @@ class PhaseImagingSystem(object):
                                    self.image_intensity)) * (self.noise_level *
                                                              self.noise_level *
                                                              self.image_intensity)
-
-
-
 
     def _construct_inverse_k_squared_kernel(self):
 
