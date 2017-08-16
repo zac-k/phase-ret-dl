@@ -73,6 +73,30 @@ def plot_image(image, type=None):
     plt.show(block=True)
 
 
+def save_image(image, output_path, type=None):
+
+    fig = plt.figure()
+    fig.set_size_inches(1, 1)
+    ax = plt.Axes(fig, [0, 0, 1, 1])
+    ax.set_axis_off()
+    fig.add_axes(ax)
+
+    if type == 'image':
+        vmin = 0
+        vmax = 2
+        ax.imshow(image, cmap='gray', vmin=vmin, vmax=vmax, aspect='auto', interpolation='none')
+    elif type == 'phase':
+        vmin = -3
+        vmax = 3
+        ax.imshow(image, cmap='gray', vmin=vmin, vmax=vmax, aspect='auto', interpolation='none')
+    else:
+        ax.imshow(image, cmap='gray', aspect='auto', interpolation='none')
+    # Remove tick marks from plot
+
+    plt.savefig(output_path, dpi=800)
+    plt.close()
+
+
 def print_confusion_matrix(plot):
     cls_true = data.test.cls
 
