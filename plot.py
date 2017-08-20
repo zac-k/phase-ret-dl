@@ -19,6 +19,10 @@ def plot_images(data):
                 vmin = -4
                 vmax = 4
                 ax.imshow(data[i].image, cmap='gray', vmin=vmin, vmax=vmax)
+            elif data[i].type == 'error':
+                vmin = -1
+                vmax = 1
+                ax.imshow(data[i].image, cmap='gray', vmin=vmin, vmax=vmax)
             else:
                 ax.imshow(data[i].image, cmap='gray')
             ax.set_xlabel(data[i].title)
@@ -88,6 +92,10 @@ def save_image(image, output_path, type=None):
     elif type == 'phase':
         vmin = -3
         vmax = 3
+        ax.imshow(image, cmap='gray', vmin=vmin, vmax=vmax, aspect='auto', interpolation='none')
+    elif type == 'error':
+        vmin = -1
+        vmax = 1
         ax.imshow(image, cmap='gray', vmin=vmin, vmax=vmax, aspect='auto', interpolation='none')
     else:
         ax.imshow(image, cmap='gray', aspect='auto', interpolation='none')

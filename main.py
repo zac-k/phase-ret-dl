@@ -89,13 +89,14 @@ def flatten_layer(layer):
 
 
 np.set_printoptions(threshold=np.inf)
+f = open('./data/figures/errors.txt', 'w')
 
 # Create dict of hyperparameter values, each of which will be assigned to the appropriate
 # variable closer to where they are used.
 hyperparameters = {'Hidden Layer Size': 50000,
                    'Number of Hidden Layers': 1,
                    'Input Type': 'phases',
-                   'Train/Valid/Test Split': [5000, 0, 100],
+                   'Train/Valid/Test Split': [50, 0, 100],
                    'Batch Size': 50,
                    'Optimiser Type': 'gradient descent',
                    'Learning Rate': 0.5,
@@ -105,7 +106,10 @@ imaging_parameters = {'Window Function Radius': 0.5,
                       'Use Multislice': False,
                       'Image Size in Pixels': 64,
                       'Multislice Resolution in Pixels': 1024,
-                      'Noise Level': 0.20}
+                      'Noise Level': 0.00}
+
+utils.write_dict(f, hyperparameters)
+utils.write_dict(f, imaging_parameters)
 
 # Set image size and shape
 img_size = imaging_parameters['Image Size in Pixels']
@@ -186,8 +190,10 @@ for item in range(num_train):
 
 # Define average error in training set, calculate it, and print output.
 if input_type == 'phases':
-    error_train = utils.average_normalised_rms_error_flat(phase_exact_flat_train, phase_retrieved_flat_train)
-    print("Average accuracy on ", "training", "-set: {0: .1%}".format(error_train), sep='')
+    error_train_ave = utils.average_normalised_rms_error_flat(phase_exact_flat_train, phase_retrieved_flat_train)
+    print("Average accuracy on ", "training", "-set: {0: .1%}".format(error_train_ave), sep='')
+    f.write("Average accuracy on training-set: {0: .1%}".format(error_train_ave) + '\n')
+
 
 # Create arrays to hold flattened test data
 phase_exact_flat_test = []
@@ -223,6 +229,7 @@ for item in range(num_test):
 # through neural network
 error_pre_adj = utils.average_normalised_rms_error_flat(phase_exact_flat_test, phase_retrieved_flat_test)
 print("Accuracy on test set (pre adjustment): {0: .1%}".format(error_pre_adj))
+f.write("Accuracy on test set (pre adjustment): {0: .1%}".format(error_pre_adj) + '\n')
 
 # Determine number of nodes in input layer
 if input_type == 'images':
@@ -354,6 +361,7 @@ error = tf.sqrt(tf.reduce_sum(tf.squared_difference(y_true, output), 1) / tf.red
 accuracy = tf.reduce_mean(error)
 acc, x_val = session.run([accuracy, x], feed_dict=feed_dict_test)
 print("Accuracy on ", "test", "-set (post-adjustment): {0: .1%}".format(acc), sep='')
+f.write("Accuracy on test-set (post-adjustment): {0: .1%}".format(acc) + '\n')
 
 # Obtain output of neural net on test set
 output_images = session.run(output, feed_dict=feed_dict_test)
@@ -368,131 +376,107 @@ for output_image in output_images:
                 )
 error_test_vs_train /= num_test
 print("Accuracy on ", "test input", " compared to training output: {0: .1%}".format(error_test_vs_train), sep='')
-
-result_for_printing = []
-result_for_printing.append(plot.PrintableData(np.reshape(phase_exact_flat_train[0], img_shape),
-                                              'training example',
-                                              'phase'))
-result_for_printing.append(plot.PrintableData(np.reshape(phase_retrieved_flat_train[0], img_shape),
-                                              'training example (retrieved)',
-                                              'phase',
-                                              comment="{0: .1%} (ave'd)".format(error_train),))
-result_for_printing.append(plot.PrintableData(np.reshape(phase_exact_flat_train[1], img_shape),
-                                              'training example',
-                                              'phase'))
-result_for_printing.append(plot.PrintableData(np.reshape(phase_retrieved_flat_train[1], img_shape),
-                                              'training example (retrieved)',
-                                              'phase',
-                                              comment="{0: .1%} (ave'd)".format(error_train),))
-result_for_printing.append(plot.PrintableData(np.reshape(phase_exact_flat_train[2], img_shape),
-                                              'training example',
-                                              'phase'))
-result_for_printing.append(plot.PrintableData(np.reshape(phase_retrieved_flat_train[2], img_shape),
-                                              'training example (retrieved)',
-                                              'phase',
-                                              comment="{0: .1%} (ave'd)".format(error_train),))
-result_for_printing.append(plot.PrintableData(np.reshape(phase_exact_flat_train[3], img_shape),
-                                              'training example',
-                                              'phase'))
-result_for_printing.append(plot.PrintableData(np.reshape(phase_retrieved_flat_train[3], img_shape),
-                                              'training example (retrieved)',
-                                              'phase',
-                                              comment="{0: .1%} (ave'd)".format(error_train),))
-result_for_printing.append(plot.PrintableData(np.reshape(phase_exact_flat_train[4], img_shape),
-                                              'training example',
-                                              'phase'))
-result_for_printing.append(plot.PrintableData(np.reshape(phase_retrieved_flat_train[4], img_shape),
-                                              'training example (retrieved)',
-                                              'phase',
-                                              comment="{0: .1%} (ave'd)".format(error_train),))
-result_for_printing.append(plot.PrintableData(np.reshape(phase_exact_flat_train[5], img_shape),
-                                              'training example',
-                                              'phase'))
-result_for_printing.append(plot.PrintableData(np.reshape(phase_retrieved_flat_train[5], img_shape),
-                                              'training example (retrieved)',
-                                              'phase',
-                                              comment="{0: .1%} (ave'd)".format(error_train),))
-# result_for_printing.append(plot.PrintableData(np.reshape(mean_exact_train, img_shape),
-#                                               'mean training example',
+f.write("Accuracy on test input compared to training output: {0: .1%}".format(error_test_vs_train) + '\n')
+# result_for_printing = []
+# result_for_printing.append(plot.PrintableData(np.reshape(phase_exact_flat_train[0], img_shape),
+#                                               'training example',
 #                                               'phase'))
-result_for_printing.append(plot.PrintableData(np.reshape(phase_exact_flat_test[0], img_shape),
-                                              'test example',
-                                              'phase'))
-result_for_printing.append(plot.PrintableData(np.reshape(phase_retrieved_flat_test[0], img_shape),
-                                              'test example (retrieved)',
-                                              'phase',
-                                              comment="{0: .1%}".format(error_pre_adj)))
-result_for_printing.append(plot.PrintableData(output_images[0].reshape(img_shape),
-                                              'test example (ret_adj)',
-                                              'phase',
-                                              comment="{0: .1%}".format(acc)))
+# result_for_printing.append(plot.PrintableData(np.reshape(phase_retrieved_flat_train[0], img_shape),
+#                                               'training example (retrieved)',
+#                                               'phase',
+#                                               comment="{0: .1%} (ave'd)".format(error_train),))
+# result_for_printing.append(plot.PrintableData(np.reshape(phase_exact_flat_train[1], img_shape),
+#                                               'training example',
+#                                               'phase'))
+# result_for_printing.append(plot.PrintableData(np.reshape(phase_retrieved_flat_train[1], img_shape),
+#                                               'training example (retrieved)',
+#                                               'phase',
+#                                               comment="{0: .1%} (ave'd)".format(error_train),))
+# result_for_printing.append(plot.PrintableData(np.reshape(phase_exact_flat_train[2], img_shape),
+#                                               'training example',
+#                                               'phase'))
+# result_for_printing.append(plot.PrintableData(np.reshape(phase_retrieved_flat_train[2], img_shape),
+#                                               'training example (retrieved)',
+#                                               'phase',
+#                                               comment="{0: .1%} (ave'd)".format(error_train),))
+# result_for_printing.append(plot.PrintableData(np.reshape(phase_exact_flat_train[3], img_shape),
+#                                               'training example',
+#                                               'phase'))
+# result_for_printing.append(plot.PrintableData(np.reshape(phase_retrieved_flat_train[3], img_shape),
+#                                               'training example (retrieved)',
+#                                               'phase',
+#                                               comment="{0: .1%} (ave'd)".format(error_train),))
+# result_for_printing.append(plot.PrintableData(np.reshape(phase_exact_flat_train[4], img_shape),
+#                                               'training example',
+#                                               'phase'))
+# result_for_printing.append(plot.PrintableData(np.reshape(phase_retrieved_flat_train[4], img_shape),
+#                                               'training example (retrieved)',
+#                                               'phase',
+#                                               comment="{0: .1%} (ave'd)".format(error_train),))
+# result_for_printing.append(plot.PrintableData(np.reshape(phase_exact_flat_train[5], img_shape),
+#                                               'training example',
+#                                               'phase'))
+# result_for_printing.append(plot.PrintableData(np.reshape(phase_retrieved_flat_train[5], img_shape),
+#                                               'training example (retrieved)',
+#                                               'phase',
+#                                               comment="{0: .1%} (ave'd)".format(error_train),))
+# # result_for_printing.append(plot.PrintableData(np.reshape(mean_exact_train, img_shape),
+# #                                               'mean training example',
+# #                                               'phase'))
+# result_for_printing.append(plot.PrintableData(np.reshape(phase_exact_flat_test[0], img_shape),
+#                                               'test example',
+#                                               'phase'))
+# result_for_printing.append(plot.PrintableData(np.reshape(phase_retrieved_flat_test[0], img_shape),
+#                                               'test example (retrieved)',
+#                                               'phase',
+#                                               comment="{0: .1%}".format(error_pre_adj)))
+# result_for_printing.append(plot.PrintableData(output_images[0].reshape(img_shape),
+#                                               'test example (ret_adj)',
+#                                               'phase',
+#                                               comment="{0: .1%}".format(acc)))
+#
+#
+#
+error_ret = (np.array(phase_retrieved_flat_test) - np.array(phase_exact_flat_test)).tolist()
+error_adj = (np.array(output_images) - np.array(phase_exact_flat_test)).tolist()
 
-plot.save_image(np.reshape(phase_exact_flat_train[0], img_shape),
-                './data/figures/phase_exact_train_0.png', 'phase')
-plot.save_image(np.reshape(phase_retrieved_flat_train[0], img_shape),
-                './data/figures/phase_retrieved_train_0.png', 'phase')
-plot.save_image(np.reshape(phase_exact_flat_train[1], img_shape),
-                './data/figures/phase_exact_train_1.png', 'phase')
-plot.save_image(np.reshape(phase_retrieved_flat_train[1], img_shape),
-                './data/figures/phase_retrieved_train_1.png', 'phase')
-plot.save_image(np.reshape(phase_exact_flat_train[2], img_shape),
-                './data/figures/phase_exact_train_2.png', 'phase')
-plot.save_image(np.reshape(phase_retrieved_flat_train[2], img_shape),
-                './data/figures/phase_retrieved_train_2.png', 'phase')
-plot.save_image(np.reshape(phase_exact_flat_train[3], img_shape),
-                './data/figures/phase_exact_train_3.png', 'phase')
-plot.save_image(np.reshape(phase_retrieved_flat_train[3], img_shape),
-                './data/figures/phase_retrieved_train_3.png', 'phase')
-plot.save_image(np.reshape(phase_exact_flat_train[4], img_shape),
-                './data/figures/phase_exact_train_4.png', 'phase')
-plot.save_image(np.reshape(phase_retrieved_flat_train[4], img_shape),
-                './data/figures/phase_retrieved_train_4.png', 'phase')
-plot.save_image(np.reshape(phase_exact_flat_train[5], img_shape),
-                './data/figures/phase_exact_train_5.png', 'phase')
-plot.save_image(np.reshape(phase_retrieved_flat_train[5], img_shape),
-                './data/figures/phase_retrieved_train_5.png', 'phase')
+for i in range(5):
+    plot.save_image(np.reshape(phase_exact_flat_train[i], img_shape),
+                    './data/figures/phase_exact_train_' + str(i) + '.png', 'phase')
+    plot.save_image(np.reshape(phase_retrieved_flat_train[i], img_shape),
+                    './data/figures/phase_retrieved_train_' + str(i) + '.png', 'phase')
+    plot.save_image(np.reshape(phase_exact_flat_test[i], img_shape),
+                    './data/figures/phase_exact_test_' + str(i) + '.png', 'phase')
+    plot.save_image(np.reshape(phase_retrieved_flat_test[i], img_shape),
+                    './data/figures/phase_retrieved_test_' + str(i) + '.png', 'phase')
+    plot.save_image(np.reshape(output_images[i], img_shape),
+                    './data/figures/phase_adjusted_test_' + str(i) + '.png', 'phase')
+    plot.save_image(np.reshape(error_ret[i], img_shape),
+                    './data/figures/error_retrieved_test_' + str(i) + '.png', 'error')
+    plot.save_image(np.reshape(error_adj[i], img_shape),
+                    './data/figures/error_adjusted_test_' + str(i) + '.png', 'error')
 
-plot.save_image(np.reshape(phase_exact_flat_test[0], img_shape),
-                './data/figures/phase_exact_test_0.png', 'phase')
-plot.save_image(np.reshape(phase_retrieved_flat_test[0], img_shape),
-                './data/figures/phase_retrieved_test_0.png', 'phase')
-plot.save_image(np.reshape(output_images[0], img_shape),
-                './data/figures/phase_adjusted_test_0.png', 'phase')
-plot.save_image(np.reshape(phase_exact_flat_test[1], img_shape),
-                './data/figures/phase_exact_test_1.png', 'phase')
-plot.save_image(np.reshape(phase_retrieved_flat_test[1], img_shape),
-                './data/figures/phase_retrieved_test_1.png', 'phase')
-plot.save_image(np.reshape(output_images[1], img_shape),
-                './data/figures/phase_adjusted_test_1.png', 'phase')
-plot.save_image(np.reshape(phase_exact_flat_test[2], img_shape),
-                './data/figures/phase_exact_test_2.png', 'phase')
-plot.save_image(np.reshape(phase_retrieved_flat_test[2], img_shape),
-                './data/figures/phase_retrieved_test_2.png', 'phase')
-plot.save_image(np.reshape(output_images[2], img_shape),
-                './data/figures/phase_adjusted_test_2.png', 'phase')
-plot.save_image(np.reshape(phase_exact_flat_test[3], img_shape),
-                './data/figures/phase_exact_test_3.png', 'phase')
-plot.save_image(np.reshape(phase_retrieved_flat_test[3], img_shape),
-                './data/figures/phase_retrieved_test_3.png', 'phase')
-plot.save_image(np.reshape(output_images[3], img_shape),
-                './data/figures/phase_adjusted_test_3.png', 'phase')
-plot.save_image(np.reshape(phase_exact_flat_test[4], img_shape),
-                './data/figures/phase_exact_test_4.png', 'phase')
-plot.save_image(np.reshape(phase_retrieved_flat_test[4], img_shape),
-                './data/figures/phase_retrieved_test_4.png', 'phase')
-plot.save_image(np.reshape(output_images[4], img_shape),
-                './data/figures/phase_adjusted_test_4.png', 'phase')
-plot.save_image(np.reshape(phase_exact_flat_test[5], img_shape),
-                './data/figures/phase_exact_test_5.png', 'phase')
-plot.save_image(np.reshape(phase_retrieved_flat_test[5], img_shape),
-                './data/figures/phase_retrieved_test_5.png', 'phase')
-plot.save_image(np.reshape(output_images[5], img_shape),
-                './data/figures/phase_adjusted_test_5.png', 'phase')
+
+
+for i in range(num_test):
+    error_test = utils.normalised_rms_error(phase_exact_flat_test[i], phase_retrieved_flat_test[i])
+    f.write("Accuracy on test input " + str(i) + ": {0: .1%}".format(error_test) + '\n')
+
+accuracy = tf.sqrt(tf.reduce_sum(tf.squared_difference(y_true, output), 1) / tf.reduce_sum(tf.square(y_true), 1))
+acc, x_val = session.run([accuracy, x], feed_dict=feed_dict_test)
+for i, output_image in enumerate(output_images):
+    f.write("Accuracy on test input " + str(i) + "(adjusted): {0: .1%}".format(acc[i]) + '\n')
+
+for i in range(num_train):
+    error_train = utils.normalised_rms_error(phase_exact_flat_train[i], phase_retrieved_flat_train[i])
+    f.write("Accuracy on training input " + str(i) + ": {0: .1%}".format(error_train) + '\n')
 
 
 
 
+
+f.close()
 # Plot images
-plot.plot_images(result_for_printing)
-utils.beep()  # Alert user that script has finished
+#plot.plot_images(result_for_printing)
+#utils.beep()  # Alert user that script has finished
 show()  # Prevent plt.show(block=False) from closing plot window

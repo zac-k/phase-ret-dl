@@ -52,3 +52,9 @@ def beep():
     freq = 440  # Set Frequency To 2500 Hertz
     dur = 200  # Set Duration To 1000 ms == 1 second
     winsound.Beep(freq, dur)
+
+
+def write_dict(file, dict):
+    for key, value in dict.items():
+        file.write('%s:%s\n' % (key, value) + '\n')
+    return

@@ -4,7 +4,6 @@ from numpy import pi as PI
 import copy
 import pyprind, sys
 import random as rnd
-from numba import jit
 np.set_printoptions(threshold=10)
 
 
@@ -313,7 +312,6 @@ class PhaseImagingSystem(object):
         return 2 * PI * x / (wl * self.energy)
 
     @staticmethod
-    @jit
     def bessi0(x):
 
         i0a = [1.0, 3.5156229, 3.0899424, 1.2067492,
@@ -340,7 +338,6 @@ class PhaseImagingSystem(object):
         return sum
 
     @staticmethod
-    @jit
     def bessk0(x):
 
         k0a = [-0.57721566, 0.42278420, 0.23069756,
@@ -367,7 +364,6 @@ class PhaseImagingSystem(object):
         return sum
 
     @staticmethod
-    @jit
     def vzatom(z, radius):
 
         # Lorenzian, Gaussian constants
@@ -403,7 +399,6 @@ class PhaseImagingSystem(object):
         return al * suml + ag * sumg
 
     @staticmethod
-    @jit
     def splinh(x, y, b, c, d, n):
 
         if n < 4:
@@ -462,7 +457,6 @@ class PhaseImagingSystem(object):
         return x, y, b, c, d
 
     @staticmethod
-    @jit
     def seval(x, y, b, c, d, n, x0):
         # Exit if x0 is outside the spline range
         n = int(n)
@@ -548,7 +542,7 @@ class PhaseImagingSystem(object):
                                       rsq)
         return vz
 
-    @jit
+
     def tratoms_old(self, trans, x, y, z_number, scalex, scaley, idx, rmax2, rminsq, na):
         M = self.M
         ixo = x / scalex
@@ -579,7 +573,7 @@ class PhaseImagingSystem(object):
                         vz = PhaseImagingSystem.vz_atom_lut(z_number[i], rsq)
                         trans[ixw, iyw] += vz
 
-    @jit
+
     def tratoms(self, trans, x, y, z_number, scalex, scaley, idx, rmax2, rminsq, na):
         M = self.M
         ixo = x / scalex
@@ -613,7 +607,7 @@ class PhaseImagingSystem(object):
                         vz = PhaseImagingSystem.vz_atom_lut(z_number[i], rsq[ix - nx1[i], iy - ny1[i]])
                         trans[ixw[ix - nx1[i]], iyw[iy - ny1[i]]] += vz
 
-    @jit
+
     def trlayer(self, x, y, z, z_number, na, aA, trans, window):
 
         M = self.M
