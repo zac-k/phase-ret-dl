@@ -4,6 +4,7 @@ from numpy import pi as PI
 import copy
 import pyprind, sys
 import random as rnd
+from numba import jit
 np.set_printoptions(threshold=10)
 
 
@@ -29,7 +30,8 @@ class PhaseImagingSystem(object):
     fparams =  [[0 for col in range(npmax)] for row in range(nzmax + 1)]
 
     def __init__(self, image_size, defocus, image_width, energy,
-                 specimen_file, mip, is_attenuating, noise_level, use_multislice, M):
+                 specimen_file, mip, is_attenuating, noise_level, use_multislice,
+                 multislice_method, M, item):
 
         # Initialise image/micrograph arrays
         self.image_under = np.zeros(list((image_size, image_size)), dtype=complex)
@@ -53,10 +55,10 @@ class PhaseImagingSystem(object):
         self.noise_level = noise_level
         self.M = M
         self.lowest_integrated_intensity = 1
+        self.wave_multislice_hr = []
         self.wave_multislice = []
         self.atom_locations = []
         self.use_multislice = use_multislice
-
         self.nbeams = 0
 
 
@@ -74,10 +76,17 @@ class PhaseImagingSystem(object):
         self.specimen = None
         self.specimen_size = None
 
-        # Construct specimen from file, project phases, and
-        # downsample phase to the system's image size
-        self._construct_specimen(specimen_file)
-        self._project_phase(orientation=0)
+
+        # todo: replace 'replace this' with 'files', and incorporate phase unwrapping
+        if multislice_method == 'replace this':
+            self.wave_multislice = self._import_wavefield('./data/images/multislice/image(' +
+                                                        str(item) + ')', self.M)
+            self.phase_exact = self.extract_phase_from_wavefield(self.wave_multislice)
+        else:
+            # Construct specimen from file, project phases, and
+            # downsample phase to the system's image size
+            self._construct_specimen(specimen_file)
+            self._project_phase(orientation=0)
 
         while len(self.phase_exact) > image_size:
             self.phase_exact = self._downsample(self.phase_exact)
@@ -91,16 +100,31 @@ class PhaseImagingSystem(object):
         self.inverse_k_squared_kernel = self._construct_inverse_k_squared_kernel()
         self.k_kernel = self._construct_k_kernel()
         if use_multislice:
+            if multislice_method == 'files':
+                self.wave_multislice_hr = self._import_wavefield('./data/images/multislice/image_hr(' +
+                                                        str(item) + ')', self.M)
+            else:
+                self.atom_locations = self.build_atom_locations()
+                random_axis = PhaseImagingSystem.generate_random_axis()
+                random_angle = rnd.uniform(0, 2 * PI)
+                self.wave_multislice_hr = self.project_phase_ms(
+                                             axis=random_axis,
+                                             angle=random_angle)
 
-            self.atom_locations = self.build_atom_locations()
-            random_axis = PhaseImagingSystem.generate_random_axis()
-            random_angle = rnd.uniform(0, 2 * PI)
-            self.wave_multislice = self.project_phase_ms(
-                                         axis=random_axis,
-                                         angle=random_angle)
             print("done")
 
+    # def extract_phase_from_wavefield(self, wave):
+    #
+    #     nx = len(wave)
+    #     ny = len(wave[0])
+    #
+    #     for i in range(nx):
+    #         for j in range(ny):
+
+
+
     @staticmethod
+    @jit
     def _upsample(input_image):
         nx = len(input_image)
         ny = len(input_image[0])
@@ -128,6 +152,7 @@ class PhaseImagingSystem(object):
                          np.sin(theta) * np.sin(phi),
                          np.cos(theta)])
 
+    @jit
     def build_atom_locations(self):
         """
         Create a list containing atom locations and their associated atomic numbers.
@@ -270,6 +295,7 @@ class PhaseImagingSystem(object):
                        np.cos(angle) + axis[2] * axis[2] * (1 - np.cos(angle))]])
         return r
 
+    @jit
     def freqn(self, M, aA, k2max):
         xo = np.arange(M) * aA / (M - 1)
         imid = M / 2
@@ -290,10 +316,10 @@ class PhaseImagingSystem(object):
     def sort_by_z(x, y, z, z_number):
         """
         Sorts atoms from lowest to highest z-depth
-        :param x:
-        :param y:
-        :param z:
-        :param z_number:
+        :param x: x coord of atom
+        :param y: y coord of atom
+        :param z: z coord of atom
+        :param z_number: atomic number of atom
         :return:
         """
         a = np.vstack((x, y, z, z_number))
@@ -312,6 +338,7 @@ class PhaseImagingSystem(object):
         return 2 * PI * x / (wl * self.energy)
 
     @staticmethod
+    @jit
     def bessi0(x):
 
         i0a = [1.0, 3.5156229, 3.0899424, 1.2067492,
@@ -338,6 +365,7 @@ class PhaseImagingSystem(object):
         return sum
 
     @staticmethod
+    @jit
     def bessk0(x):
 
         k0a = [-0.57721566, 0.42278420, 0.23069756,
@@ -364,6 +392,7 @@ class PhaseImagingSystem(object):
         return sum
 
     @staticmethod
+    @jit
     def vzatom(z, radius):
 
         # Lorenzian, Gaussian constants
@@ -399,6 +428,7 @@ class PhaseImagingSystem(object):
         return al * suml + ag * sumg
 
     @staticmethod
+    @jit
     def splinh(x, y, b, c, d, n):
 
         if n < 4:
@@ -457,6 +487,7 @@ class PhaseImagingSystem(object):
         return x, y, b, c, d
 
     @staticmethod
+    @jit
     def seval(x, y, b, c, d, n, x0):
         # Exit if x0 is outside the spline range
         n = int(n)
@@ -484,6 +515,7 @@ class PhaseImagingSystem(object):
         return seval1
 
     @staticmethod
+    @jit
     def vz_atom_lut(z, rsq):
         """
         return the (real space) projected atomic potential for atomic
@@ -542,7 +574,7 @@ class PhaseImagingSystem(object):
                                       rsq)
         return vz
 
-
+    @jit
     def tratoms_old(self, trans, x, y, z_number, scalex, scaley, idx, rmax2, rminsq, na):
         M = self.M
         ixo = x / scalex
@@ -574,6 +606,7 @@ class PhaseImagingSystem(object):
                         trans[ixw, iyw] += vz
 
 
+    @jit
     def tratoms(self, trans, x, y, z_number, scalex, scaley, idx, rmax2, rminsq, na):
         M = self.M
         ixo = x / scalex
@@ -607,8 +640,8 @@ class PhaseImagingSystem(object):
                         vz = PhaseImagingSystem.vz_atom_lut(z_number[i], rsq[ix - nx1[i], iy - ny1[i]])
                         trans[ixw[ix - nx1[i]], iyw[iy - ny1[i]]] += vz
 
-
-    def trlayer(self, x, y, z, z_number, na, aA, trans, window):
+    @jit
+    def trlayer(self, x, y, z_number, na, aA, trans, window):
 
         M = self.M
         rmax = 3  # Maximum atomic radius in Angstrom
@@ -625,9 +658,7 @@ class PhaseImagingSystem(object):
 
         idx = int(M * rmax / aA) + 1
         print("Building Transmission Layer")
-        #
-        #for i in range(num_atoms):
-            #
+
         self.tratoms(trans, x, y, z_number, scalex, scaley, idx, rmax2, rminsq, na)
 
         # Convert phase to complex transmission function
@@ -640,7 +671,9 @@ class PhaseImagingSystem(object):
         trans = fft.ifft2(trans)
         return trans
 
+
     @staticmethod
+    @jit
     def read_fe_table():
         if PhaseImagingSystem.fe_table_read == 1:
             return 0
@@ -1892,7 +1925,7 @@ class PhaseImagingSystem(object):
                                                                  * trans.real) * 1j
         return wave
 
-
+    @jit
     def propagate_wave(self, wave, propx, propy, k2, k2max):
         M = self.M
 
@@ -1928,6 +1961,7 @@ class PhaseImagingSystem(object):
         tot *= scale
 
         return tot
+
 
     def project_phase_ms(self, axis, angle):
 
@@ -2066,7 +2100,6 @@ class PhaseImagingSystem(object):
                 if na > 0:
                     trans = self.trlayer(x[istart:num_atoms],
                                          y[istart:num_atoms],
-                                         z[istart:num_atoms],
                                          z_number[istart:num_atoms],
                                          na, aA, trans, window)
 
@@ -2111,12 +2144,15 @@ class PhaseImagingSystem(object):
         return kernel
 
     def _construct_k_squared_kernel(self):
-
-        kernel = np.zeros(list((self.image_size, self.image_size)), dtype=complex)
-        for i in range(self.image_size):
-            for j in range(self.image_size):
-                i0 = i - self.image_size / 2
-                j0 = j - self.image_size / 2
+        if self.use_multislice:
+            size = self.M
+        else:
+            size = self.image_size
+        kernel = np.zeros(list((size, size)), dtype=complex)
+        for i in range(size):
+            for j in range(size):
+                i0 = i - size / 2
+                j0 = j - size / 2
                 da = 1 / self.image_width
                 kernel[i, j] = (i0 * i0) * da * da + j0 * j0 * da * da
 
@@ -2145,10 +2181,24 @@ class PhaseImagingSystem(object):
 
                 f.readline()
 
+    def _import_wavefield(self, wavefield_file, pix):
+
+        with open(wavefield_file, 'r') as f:
+            f.seek(0)
+            wave_temp = np.zeros((pix, pix), dtype=complex)
+
+            #pix = pix - 1
+            for i in range(pix):
+                line = f.readline().split()
+                for j in range(pix):
+                    wave_temp[i, j] = float(line[j * 2]) + float(line[j * 2 + 1]) * 1j
+        return wave_temp
+
+
     def _downsample(self, input):
         input_len = len(input)
         ds_len = int(input_len / 2)
-        ds = np.zeros(list((ds_len, ds_len,)), dtype=complex)
+        ds = np.zeros((ds_len, ds_len), dtype=complex)
         for i in range(ds_len):
             for j in range(ds_len):
                 sum_ = 0
@@ -2158,6 +2208,8 @@ class PhaseImagingSystem(object):
                 ds[i, j] = sum_ / 4
 
         return ds
+
+
 
     def _project_phase(self, orientation):
         """
@@ -2198,15 +2250,13 @@ class PhaseImagingSystem(object):
         :return:
         """
         if self.use_multislice:
-            wavefunction = self.wave_multislice
+            wavefunction = self.wave_multislice_hr
         else:
             wavefunction = np.exp(-1j * self.phase_exact)
 
 
         self._set_transfer_function(defocus=defocus)
-        if self.use_multislice:
-            while len(wavefunction) > self.image_size:
-                wavefunction = self._downsample(wavefunction)
+
         wavefunction = fft.fft2(wavefunction)
         wavefunction = fft.fftshift(wavefunction)
         wavefunction = self.transfer_function * wavefunction
@@ -2223,7 +2273,12 @@ class PhaseImagingSystem(object):
         self.image_over = self._transfer_image(defocus=-self.defocus)
         self.image_under = self._transfer_image(defocus=self.defocus)
         self.image_in = self._transfer_image(defocus=0)
-
+        while len(self.image_under) > self.image_size:
+            self.image_under = self._downsample(self.image_under)
+        while len(self.image_in) > self.image_size:
+            self.image_in = self._downsample(self.image_in)
+        while len(self.image_over) > self.image_size:
+            self.image_over = self._downsample(self.image_over)
         if self.noise_level != 0:
             for image in [self.image_under,
                           self.image_in,

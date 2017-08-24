@@ -96,7 +96,7 @@ f = open('./data/figures/errors.txt', 'w')
 hyperparameters = {'Hidden Layer Size': 50000,
                    'Number of Hidden Layers': 1,
                    'Input Type': 'phases',
-                   'Train/Valid/Test Split': [50, 0, 100],
+                   'Train/Valid/Test Split': [5, 0, 100],
                    'Batch Size': 50,
                    'Optimiser Type': 'gradient descent',
                    'Learning Rate': 0.5,
@@ -104,9 +104,11 @@ hyperparameters = {'Hidden Layer Size': 50000,
                    'Number of Epochs': 50}
 imaging_parameters = {'Window Function Radius': 0.5,
                       'Use Multislice': False,
+                      'Multislice Method': 'files',
                       'Image Size in Pixels': 64,
                       'Multislice Resolution in Pixels': 1024,
-                      'Noise Level': 0.00}
+                      'Noise Level': 0.15,
+                      'Defocus': 8e-6}
 
 utils.write_dict(f, hyperparameters)
 utils.write_dict(f, imaging_parameters)
@@ -158,7 +160,7 @@ for item in range(num_train):
     specimen_file = specimen_files[np.random.randint(len(specimen_files))]
     system_train = phase.PhaseImagingSystem(
            image_size=img_size,
-           defocus=8e-6,
+           defocus=imaging_parameters['Defocus'],
            image_width=150e-9,
            energy=300e3,
            specimen_file=specimen_files[item],
@@ -166,7 +168,9 @@ for item in range(num_train):
            is_attenuating=True,
            noise_level=noise_level,
            use_multislice=use_multislice,
-           M=M)
+           multislice_method=imaging_parameters['Multislice Method'],
+           M=M,
+           item=item)
     system_train.generate_images()
     system_train.apodise_images(imaging_parameters['Window Function Radius'])
     system_train.retrieve_phase()
@@ -203,7 +207,7 @@ image_flat_test = []
 # Compute retrieved test phases and flatten test data
 for item in range(num_test):
     system_test = phase.PhaseImagingSystem(image_size=img_size,
-                                           defocus=8e-6,
+                                           defocus=imaging_parameters['Defocus'],
                                            image_width=150e-9,
                                            energy=300e3,
                                            specimen_file=specimen_files[num_train + item],
@@ -211,7 +215,9 @@ for item in range(num_test):
                                            is_attenuating=True,
                                            noise_level=noise_level,
                                            use_multislice=use_multislice,
-                                           M=M)
+                                           multislice_method=imaging_parameters['Multislice Method'],
+                                           M=M,
+                                           item=item)
     system_test.generate_images()
     system_test.apodise_images(imaging_parameters['Window Function Radius'])
     system_test.retrieve_phase()
@@ -277,7 +283,7 @@ for i in range(num_hidden_layers):
     hidden_layers[i] = new_fc_layer(hidden_input,
                                     hidden_input_size,
                                     hidden_layer_size,
-                                    activation_function=tf.nn.tanh,
+                                    activation_function=tf.nn.relu,
                                     init_type='identity')
 
 if num_hidden_layers == 0:
