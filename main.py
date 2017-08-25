@@ -96,19 +96,20 @@ f = open('./data/figures/errors.txt', 'w')
 hyperparameters = {'Hidden Layer Size': 50000,
                    'Number of Hidden Layers': 1,
                    'Input Type': 'phases',
-                   'Train/Valid/Test Split': [5, 0, 100],
+                   'Train/Valid/Test Split': [1, 0, 1],
                    'Batch Size': 50,
                    'Optimiser Type': 'gradient descent',
                    'Learning Rate': 0.5,
                    'Use Convolutional Layers': False,
                    'Number of Epochs': 50}
 imaging_parameters = {'Window Function Radius': 0.5,
-                      'Use Multislice': False,
+                      'Use Multislice': True,
                       'Multislice Method': 'files',
                       'Image Size in Pixels': 64,
                       'Multislice Resolution in Pixels': 1024,
-                      'Noise Level': 0.15,
+                      'Noise Level': 0.00,
                       'Defocus': 8e-6}
+n_savefile_sets = hyperparameters['Train/Valid/Test Split']
 
 utils.write_dict(f, hyperparameters)
 utils.write_dict(f, imaging_parameters)
@@ -177,7 +178,7 @@ for item in range(num_train):
     system_train.apodise_phases(imaging_parameters['Window Function Radius'])
     phase_exact_flat_train.append(system_train.phase_exact.real.reshape(img_size_flat))
     phase_retrieved_flat_train.append(system_train.phase_retrieved.real.reshape(img_size_flat))
-    if item < 5:
+    if item < n_savefile_sets[0]:
         plot.save_image(system_train.image_under,
                         './data/figures/image_under_' + str(item) + '.png', 'image')
         plot.save_image(system_train.image_in,
@@ -205,12 +206,12 @@ phase_retrieved_flat_test = []
 image_flat_test = []
 
 # Compute retrieved test phases and flatten test data
-for item in range(num_test):
+for item in range(num_train, num_test + num_train):
     system_test = phase.PhaseImagingSystem(image_size=img_size,
                                            defocus=imaging_parameters['Defocus'],
                                            image_width=150e-9,
                                            energy=300e3,
-                                           specimen_file=specimen_files[num_train + item],
+                                           specimen_file=specimen_files[item],
                                            mip=mip,
                                            is_attenuating=True,
                                            noise_level=noise_level,
@@ -283,7 +284,7 @@ for i in range(num_hidden_layers):
     hidden_layers[i] = new_fc_layer(hidden_input,
                                     hidden_input_size,
                                     hidden_layer_size,
-                                    activation_function=tf.nn.relu,
+                                    activation_function=tf.nn.tanh,
                                     init_type='identity')
 
 if num_hidden_layers == 0:
@@ -334,9 +335,6 @@ num_batches = int(np.floor(num_train / batch_size))  # Calculate number of batch
 # Calculate the mean of the training data for later use
 mean_exact_train = np.mean(phase_exact_flat_train, axis=0)
 
-# Store exact and reconstruced examples of training data for later use
-phase_exact_flat_train_0 = phase_exact_flat_train[1]
-phase_retrieved_flat_train_0 = phase_retrieved_flat_train[1]
 
 # Train the model
 print('Training...')
@@ -446,11 +444,12 @@ f.write("Accuracy on test input compared to training output: {0: .1%}".format(er
 error_ret = (np.array(phase_retrieved_flat_test) - np.array(phase_exact_flat_test)).tolist()
 error_adj = (np.array(output_images) - np.array(phase_exact_flat_test)).tolist()
 
-for i in range(5):
+for i in range(n_savefile_sets[0]):
     plot.save_image(np.reshape(phase_exact_flat_train[i], img_shape),
                     './data/figures/phase_exact_train_' + str(i) + '.png', 'phase')
     plot.save_image(np.reshape(phase_retrieved_flat_train[i], img_shape),
                     './data/figures/phase_retrieved_train_' + str(i) + '.png', 'phase')
+for i in range(n_savefile_sets[2]):
     plot.save_image(np.reshape(phase_exact_flat_test[i], img_shape),
                     './data/figures/phase_exact_test_' + str(i) + '.png', 'phase')
     plot.save_image(np.reshape(phase_retrieved_flat_test[i], img_shape),
