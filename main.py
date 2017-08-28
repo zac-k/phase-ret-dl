@@ -96,7 +96,7 @@ f = open('./data/figures/errors.txt', 'w')
 hyperparameters = {'Hidden Layer Size': 50000,
                    'Number of Hidden Layers': 1,
                    'Input Type': 'phases',
-                   'Train/Valid/Test Split': [1, 0, 1],
+                   'Train/Valid/Test Split': [10, 0, 7],
                    'Batch Size': 50,
                    'Optimiser Type': 'gradient descent',
                    'Learning Rate': 0.5,
@@ -180,11 +180,12 @@ for item in range(num_train):
     phase_retrieved_flat_train.append(system_train.phase_retrieved.real.reshape(img_size_flat))
     if item < n_savefile_sets[0]:
         plot.save_image(system_train.image_under,
-                        './data/figures/image_under_' + str(item) + '.png', 'image')
+                        './data/figures/image_train_under_' + str(item) + '.png', 'image')
         plot.save_image(system_train.image_in,
-                        './data/figures/image_in_' + str(item) + '.png', 'image')
+                        './data/figures/image_train_in_' + str(item) + '.png', 'image')
         plot.save_image(system_train.image_over,
-                        './data/figures/image_over_' + str(item) + '.png', 'image')
+                        './data/figures/image_train_over_' + str(item) + '.png', 'image')
+
     if input_type == 'images':
         image_flat_train.append(np.concatenate((system_train.image_under.real.reshape(img_size_flat),
                                 system_train.image_in.real.reshape(img_size_flat),
@@ -225,6 +226,13 @@ for item in range(num_train, num_test + num_train):
     system_test.apodise_phases(imaging_parameters['Window Function Radius'])
     phase_exact_flat_test.append(system_test.phase_exact.real.reshape(img_size_flat))
     phase_retrieved_flat_test.append(system_test.phase_retrieved.real.reshape(img_size_flat))
+    if item < n_savefile_sets[2]:
+        plot.save_image(system_test.image_under,
+                        './data/figures/image_test_under_' + str(item) + '.png', 'image')
+        plot.save_image(system_test.image_in,
+                        './data/figures/image_test_in_' + str(item) + '.png', 'image')
+        plot.save_image(system_test.image_over,
+                        './data/figures/image_test_over_' + str(item) + '.png', 'image')
     if input_type == 'images':
         image_flat_test.append(np.concatenate((system_test.image_under.real.reshape(img_size_flat),
                                system_test.image_in.real.reshape(img_size_flat),
@@ -234,9 +242,10 @@ for item in range(num_train, num_test + num_train):
 
 # Calculate and print average normalised rms error in test set prior to processing
 # through neural network
-error_pre_adj = utils.average_normalised_rms_error_flat(phase_exact_flat_test, phase_retrieved_flat_test)
-print("Accuracy on test set (pre adjustment): {0: .1%}".format(error_pre_adj))
-f.write("Accuracy on test set (pre adjustment): {0: .1%}".format(error_pre_adj) + '\n')
+if len(phase_exact_flat_test) > 0:
+    error_pre_adj = utils.average_normalised_rms_error_flat(phase_exact_flat_test, phase_retrieved_flat_test)
+    print("Accuracy on test set (pre adjustment): {0: .1%}".format(error_pre_adj))
+    f.write("Accuracy on test set (pre adjustment): {0: .1%}".format(error_pre_adj) + '\n')
 
 # Determine number of nodes in input layer
 if input_type == 'images':
