@@ -60,7 +60,7 @@ class PhaseImagingSystem(object):
         self.atom_locations = []
         self.use_multislice = use_multislice
         self.nbeams = 0
-
+        self.projected_potential_size = self.M
 
         if is_attenuating:
             self.mip = mip
@@ -76,12 +76,11 @@ class PhaseImagingSystem(object):
         self.specimen = None
         self.specimen_size = None
 
+        if multislice_method == 'files':
 
-        # todo: replace 'replace this' with 'files', and incorporate phase unwrapping
-        if multislice_method == 'replace this':
             self.wave_multislice = self._import_wavefield('./data/images/multislice/image(' +
-                                                        str(item) + ')', self.M)
-            self.phase_exact = self.extract_phase_from_wavefield(self.wave_multislice)
+                                                        str(item) + ')', self.projected_potential_size)
+            self.phase_exact = PhaseImagingSystem.extract_phase_from_wavefield(self.wave_multislice)
         else:
             # Construct specimen from file, project phases, and
             # downsample phase to the system's image size
@@ -89,9 +88,9 @@ class PhaseImagingSystem(object):
             self._project_phase(orientation=0)
 
         while len(self.phase_exact) > image_size:
-            self.phase_exact = self._downsample(self.phase_exact)
+            self.phase_exact = PhaseImagingSystem._downsample(self.phase_exact)
         while len(self.phase_exact) < image_size:
-            self.phase_exact = self._upsample(self.phase_exact)
+            self.phase_exact = PhaseImagingSystem._upsample(self.phase_exact)
 
         # Set regularisation parameters and construct kernels
         self.reg_tie = 0.1 / (self.image_width * self.image_size)
@@ -111,7 +110,6 @@ class PhaseImagingSystem(object):
                                              axis=random_axis,
                                              angle=random_angle)
 
-            print("done")
 
     # def extract_phase_from_wavefield(self, wave):
     #
@@ -121,7 +119,15 @@ class PhaseImagingSystem(object):
     #     for i in range(nx):
     #         for j in range(ny):
 
+    @staticmethod
+    def extract_phase_from_wavefield(wave):
+        # Calculate wrapped phase from wavefield
+        output = np.angle(wave)
+        # Unwrap phase
+        output = np.unwrap(output, axis=0)
+        output = np.unwrap(output, axis=1)
 
+        return -1 * output
 
     @staticmethod
     @jit
@@ -2187,15 +2193,14 @@ class PhaseImagingSystem(object):
             f.seek(0)
             wave_temp = np.zeros((pix, pix), dtype=complex)
 
-            #pix = pix - 1
             for i in range(pix):
                 line = f.readline().split()
                 for j in range(pix):
                     wave_temp[i, j] = float(line[j * 2]) + float(line[j * 2 + 1]) * 1j
         return wave_temp
 
-
-    def _downsample(self, input):
+    @staticmethod
+    def _downsample(input):
         input_len = len(input)
         ds_len = int(input_len / 2)
         ds = np.zeros((ds_len, ds_len), dtype=complex)
@@ -2274,16 +2279,16 @@ class PhaseImagingSystem(object):
         self.image_under = self._transfer_image(defocus=self.defocus)
         self.image_in = self._transfer_image(defocus=0)
         while len(self.image_under) > self.image_size:
-            self.image_under = self._downsample(self.image_under)
+            self.image_under = PhaseImagingSystem._downsample(self.image_under)
         while len(self.image_in) > self.image_size:
-            self.image_in = self._downsample(self.image_in)
+            self.image_in = PhaseImagingSystem._downsample(self.image_in)
         while len(self.image_over) > self.image_size:
-            self.image_over = self._downsample(self.image_over)
+            self.image_over = PhaseImagingSystem._downsample(self.image_over)
         if self.noise_level != 0:
             for image in [self.image_under,
                           self.image_in,
                           self.image_over]:
-                image = self._add_noise(image)
+                self._add_noise(image)
 
         return
 
