@@ -5,6 +5,7 @@ import copy
 import pyprind, sys
 import random as rnd
 from numba import jit
+from unwrap import unwrap
 np.set_printoptions(threshold=10)
 
 
@@ -22,12 +23,10 @@ nl = 3
 ng = 3
 SMALL = 1e-25
 
-
-
 class PhaseImagingSystem(object):
 
     fe_table_read = 0
-    fparams =  [[0 for col in range(npmax)] for row in range(nzmax + 1)]
+    fparams = [[0 for col in range(npmax)] for row in range(nzmax + 1)]
 
     def __init__(self, image_size, defocus, image_width, energy,
                  specimen_file, mip, is_attenuating, noise_level, use_multislice,
@@ -121,12 +120,20 @@ class PhaseImagingSystem(object):
 
     @staticmethod
     def extract_phase_from_wavefield(wave):
+        """
+        Computes the unwrapped phase from a 2D complex-valued
+        wavefunction. Assumes that the phase is equal on opposite
+        sides of the phase map, but this can be changed by setting
+        the wrap_around_axis arguments to False, which may be
+        required if the object is not centred.
+        :param wave:
+        :return:
+        """
         # Calculate wrapped phase from wavefield
         output = np.angle(wave)
         # Unwrap phase
-        output = np.unwrap(output, axis=0)
-        output = np.unwrap(output, axis=1)
-
+        output = unwrap(output, wrap_around_axis_0=True,
+                        wrap_around_axis_1=True)
         return -1 * output
 
     @staticmethod
