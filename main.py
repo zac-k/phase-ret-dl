@@ -96,7 +96,7 @@ f = open('./data/figures/errors.txt', 'w')
 hyperparameters = {'Hidden Layer Size': 50000,
                    'Number of Hidden Layers': 1,
                    'Input Type': 'phases',
-                   'Train/Valid/Test Split': [10, 0, 7],
+                   'Train/Valid/Test Split': [100, 0, 2],
                    'Batch Size': 50,
                    'Optimiser Type': 'gradient descent',
                    'Learning Rate': 0.5,
@@ -226,13 +226,13 @@ for item in range(num_train, num_test + num_train):
     system_test.apodise_phases(imaging_parameters['Window Function Radius'])
     phase_exact_flat_test.append(system_test.phase_exact.real.reshape(img_size_flat))
     phase_retrieved_flat_test.append(system_test.phase_retrieved.real.reshape(img_size_flat))
-    if item < n_savefile_sets[2]:
+    if item < n_savefile_sets[2] + num_train:
         plot.save_image(system_test.image_under,
-                        './data/figures/image_test_under_' + str(item) + '.png', 'image')
+                        './data/figures/image_test_under_' + str(item - num_train) + '.png', 'image')
         plot.save_image(system_test.image_in,
-                        './data/figures/image_test_in_' + str(item) + '.png', 'image')
+                        './data/figures/image_test_in_' + str(item - num_train) + '.png', 'image')
         plot.save_image(system_test.image_over,
-                        './data/figures/image_test_over_' + str(item) + '.png', 'image')
+                        './data/figures/image_test_over_' + str(item - num_train) + '.png', 'image')
     if input_type == 'images':
         image_flat_test.append(np.concatenate((system_test.image_under.real.reshape(img_size_flat),
                                system_test.image_in.real.reshape(img_size_flat),
