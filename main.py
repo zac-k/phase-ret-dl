@@ -1,10 +1,12 @@
-import pyprind, sys
+import pyprind
+import sys
 import numpy as np
 import tensorflow as tf
 import utils
 from plot import show
 import plot
 import phase
+import pandas as pd
 
 # Thanks to Hvass-Labs' TensorFlow tutorials (https://github.com/Hvass-Labs/TensorFlow-Tutorials),
 # upon which much of this work is based
@@ -94,9 +96,9 @@ f = open('./data/figures/errors.txt', 'w')
 # Create dict of hyperparameter values, each of which will be assigned to the appropriate
 # variable closer to where they are used.
 hyperparameters = {'Hidden Layer Size': 50000,
-                   'Number of Hidden Layers': 1,
-                   'Input Type': 'phases',
-                   'Train/Valid/Test Split': [100, 0, 2],
+                   'Number of Hidden Layers': 2,
+                   'Input Type': 'images',
+                   'Train/Valid/Test Split': [100, 0, 10],
                    'Batch Size': 50,
                    'Optimiser Type': 'gradient descent',
                    'Learning Rate': 0.5,
@@ -105,6 +107,7 @@ hyperparameters = {'Hidden Layer Size': 50000,
 imaging_parameters = {'Window Function Radius': 0.5,
                       'Use Multislice': True,
                       'Multislice Method': 'files',
+                      'Multislice Wavefield Path': 'D:/code/images/multislice/',
                       'Image Size in Pixels': 64,
                       'Multislice Resolution in Pixels': 1024,
                       'Noise Level': 0.00,
@@ -171,13 +174,15 @@ for item in range(num_train):
            use_multislice=use_multislice,
            multislice_method=imaging_parameters['Multislice Method'],
            M=M,
-           item=item)
+           item=item,
+           path=imaging_parameters['Multislice Wavefield Path'])
     system_train.generate_images()
     system_train.apodise_images(imaging_parameters['Window Function Radius'])
     system_train.retrieve_phase()
     system_train.apodise_phases(imaging_parameters['Window Function Radius'])
     phase_exact_flat_train.append(system_train.phase_exact.real.reshape(img_size_flat))
     phase_retrieved_flat_train.append(system_train.phase_retrieved.real.reshape(img_size_flat))
+
     if item < n_savefile_sets[0]:
         plot.save_image(system_train.image_under,
                         './data/figures/image_train_under_' + str(item) + '.png', 'image')
@@ -207,7 +212,10 @@ phase_retrieved_flat_test = []
 image_flat_test = []
 
 # Compute retrieved test phases and flatten test data
+print("Generating test data")
+test_generate_bar = pyprind.ProgBar(num_test, stream=sys.stdout)
 for item in range(num_train, num_test + num_train):
+    test_generate_bar.update()
     system_test = phase.PhaseImagingSystem(image_size=img_size,
                                            defocus=imaging_parameters['Defocus'],
                                            image_width=150e-9,
@@ -219,7 +227,8 @@ for item in range(num_train, num_test + num_train):
                                            use_multislice=use_multislice,
                                            multislice_method=imaging_parameters['Multislice Method'],
                                            M=M,
-                                           item=item)
+                                           item=item,
+                                           path=imaging_parameters['Multislice Wavefield Path'])
     system_test.generate_images()
     system_test.apodise_images(imaging_parameters['Window Function Radius'])
     system_test.retrieve_phase()
@@ -363,10 +372,7 @@ for q in range(num_epochs):
                                y_true: y_true_batch}
 
             session.run(optimizer, feed_dict=feed_dict_train)
-        if input_type == 'images':
-            del image_flat_train[0:batch_size]
-        #del phase_exact_flat_train[0:batch_size]
-        #del phase_retrieved_flat_train[0:batch_size]
+
 
 # Calculate and print average normalised rms error in test set after processing through
 # trained neural network
@@ -471,7 +477,7 @@ for i in range(n_savefile_sets[2]):
                     './data/figures/error_adjusted_test_' + str(i) + '.png', 'error')
 
 
-
+errors = pd.DataFrame({})
 for i in range(num_test):
     error_test = utils.normalised_rms_error(phase_exact_flat_test[i], phase_retrieved_flat_test[i])
     f.write("Accuracy on test input " + str(i) + ": {0: .1%}".format(error_test) + '\n')
