@@ -75,7 +75,7 @@ class PhaseImagingSystem(object):
         self.specimen = None
         self.specimen_size = None
 
-        if multislice_method == 'files':
+        if use_multislice and multislice_method == 'files':
 
             self.wave_multislice = self._import_wavefield(path + 'image(' +
                                                         str(item) + ')', self.projected_potential_size)
