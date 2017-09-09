@@ -30,7 +30,7 @@ class PhaseImagingSystem(object):
 
     def __init__(self, image_size, defocus, image_width, energy,
                  specimen_file, mip, is_attenuating, noise_level, use_multislice,
-                 multislice_method, M, item):
+                 multislice_method, M, item, path):
 
         # Initialise image/micrograph arrays
         self.image_under = np.zeros(list((image_size, image_size)), dtype=complex)
@@ -77,7 +77,7 @@ class PhaseImagingSystem(object):
 
         if multislice_method == 'files':
 
-            self.wave_multislice = self._import_wavefield('./data/images/multislice/image(' +
+            self.wave_multislice = self._import_wavefield(path + 'image(' +
                                                         str(item) + ')', self.projected_potential_size)
             self.phase_exact = PhaseImagingSystem.extract_phase_from_wavefield(self.wave_multislice)
         else:
@@ -99,7 +99,7 @@ class PhaseImagingSystem(object):
         self.k_kernel = self._construct_k_kernel()
         if use_multislice:
             if multislice_method == 'files':
-                self.wave_multislice_hr = self._import_wavefield('./data/images/multislice/image_hr(' +
+                self.wave_multislice_hr = self._import_wavefield(path + 'image_hr(' +
                                                         str(item) + ')', self.M)
             else:
                 self.atom_locations = self.build_atom_locations()
