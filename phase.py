@@ -2342,6 +2342,12 @@ class PhaseImagingSystem(object):
         self.phase_exact = self.apodise(self.phase_exact, rad_sup)
         self.phase_retrieved = self.apodise(self.phase_retrieved, rad_sup)
 
+    def remove_offset(self):
+        offset = self.phase_retrieved - self.phase_exact
+        offset_avg = np.mean(np.mean(offset))
+        print(offset_avg)
+        self.phase_retrieved = self.phase_retrieved - offset_avg
+
     def retrieve_phase(self):
         """
         Utilise the transport-of-intensity equation to compute the phase from
