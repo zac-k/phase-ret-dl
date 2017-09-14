@@ -98,7 +98,7 @@ f = open('./data/figures/errors.txt', 'w')
 hyperparameters = {'Hidden Layer Size': 50000,
                    'Number of Hidden Layers': 1,
                    'Input Type': 'phases',
-                   'Train/Valid/Test Split': [5000, 0, 100],
+                   'Train/Valid/Test Split': [5, 0, 5],
                    'Batch Size': 50,
                    'Optimiser Type': 'gradient descent',
                    'Learning Rate': 0.5,
@@ -112,7 +112,10 @@ imaging_parameters = {'Window Function Radius': 0.5,
                       'Image Size in Pixels': 64,
                       'Multislice Resolution in Pixels': 1024,
                       'Noise Level': 0.00,
-                      'Defocus': 8e-6}
+                      'Defocus': 80e-6,
+                      'Error Limits': [-2, 2],
+                      'Phase Limits': [-3, 3],
+                      'Image Limits': [0, 2]}
 n_savefile_sets = hyperparameters['Train/Valid/Test Split']
 
 
@@ -190,11 +193,14 @@ for item in range(num_train):
 
     if item < n_savefile_sets[0]:
         plot.save_image(system_train.image_under,
-                        './data/figures/image_train_under_' + str(item) + '.png', 'image')
+                        './data/figures/image_train_under_' + str(item) + '.png',
+                    imaging_parameters['Image Limits'])
         plot.save_image(system_train.image_in,
-                        './data/figures/image_train_in_' + str(item) + '.png', 'image')
+                        './data/figures/image_train_in_' + str(item) + '.png',
+                    imaging_parameters['Image Limits'])
         plot.save_image(system_train.image_over,
-                        './data/figures/image_train_over_' + str(item) + '.png', 'image')
+                        './data/figures/image_train_over_' + str(item) + '.png',
+                    imaging_parameters['Image Limits'])
 
     if input_type == 'images':
         image_flat_train.append(np.concatenate((system_train.image_under.real.reshape(img_size_flat),
@@ -244,11 +250,14 @@ for item in range(num_train, num_test + num_train):
     phase_retrieved_flat_test.append(system_test.phase_retrieved.real.reshape(img_size_flat))
     if item < n_savefile_sets[2] + num_train:
         plot.save_image(system_test.image_under,
-                        './data/figures/image_test_under_' + str(item - num_train) + '.png', 'image')
+                        './data/figures/image_test_under_' + str(item - num_train) + '.png',
+                    imaging_parameters['Image Limits'])
         plot.save_image(system_test.image_in,
-                        './data/figures/image_test_in_' + str(item - num_train) + '.png', 'image')
+                        './data/figures/image_test_in_' + str(item - num_train) + '.png',
+                    imaging_parameters['Image Limits'])
         plot.save_image(system_test.image_over,
-                        './data/figures/image_test_over_' + str(item - num_train) + '.png', 'image')
+                        './data/figures/image_test_over_' + str(item - num_train) + '.png',
+                    imaging_parameters['Image Limits'])
     if input_type == 'images':
         image_flat_test.append(np.concatenate((system_test.image_under.real.reshape(img_size_flat),
                                system_test.image_in.real.reshape(img_size_flat),
@@ -468,20 +477,27 @@ error_adj = (np.array(output_images) - np.array(phase_exact_flat_test)).tolist()
 
 for i in range(n_savefile_sets[0]):
     plot.save_image(np.reshape(phase_exact_flat_train[i], img_shape),
-                    './data/figures/phase_exact_train_' + str(i) + '.png', 'phase')
+                    './data/figures/phase_exact_train_' + str(i) + '.png',
+                    imaging_parameters['Phase Limits'])
     plot.save_image(np.reshape(phase_retrieved_flat_train[i], img_shape),
-                    './data/figures/phase_retrieved_train_' + str(i) + '.png', 'phase')
+                    './data/figures/phase_retrieved_train_' + str(i) + '.png',
+                    imaging_parameters['Phase Limits'])
 for i in range(n_savefile_sets[2]):
     plot.save_image(np.reshape(phase_exact_flat_test[i], img_shape),
-                    './data/figures/phase_exact_test_' + str(i) + '.png', 'phase')
+                    './data/figures/phase_exact_test_' + str(i) + '.png',
+                    imaging_parameters['Phase Limits'])
     plot.save_image(np.reshape(phase_retrieved_flat_test[i], img_shape),
-                    './data/figures/phase_retrieved_test_' + str(i) + '.png', 'phase')
+                    './data/figures/phase_retrieved_test_' + str(i) + '.png',
+                    imaging_parameters['Phase Limits'])
     plot.save_image(np.reshape(output_images[i], img_shape),
-                    './data/figures/phase_adjusted_test_' + str(i) + '.png', 'phase')
+                    './data/figures/phase_adjusted_test_' + str(i) + '.png',
+                    imaging_parameters['Phase Limits'])
     plot.save_image(np.reshape(error_ret[i], img_shape),
-                    './data/figures/error_retrieved_test_' + str(i) + '.png', 'error')
+                    './data/figures/error_retrieved_test_' + str(i) + '.png',
+                    imaging_parameters['Error Limits'])
     plot.save_image(np.reshape(error_adj[i], img_shape),
-                    './data/figures/error_adjusted_test_' + str(i) + '.png', 'error')
+                    './data/figures/error_adjusted_test_' + str(i) + '.png',
+                    imaging_parameters['Error Limits'])
 
 
 errors = pd.DataFrame({})

@@ -77,7 +77,7 @@ def plot_image(image, type=None):
     plt.show(block=True)
 
 
-def save_image(image, output_path, type=None):
+def save_image(image, output_path, limits=None):
 
     fig = plt.figure()
     fig.set_size_inches(1, 1)
@@ -85,20 +85,12 @@ def save_image(image, output_path, type=None):
     ax.set_axis_off()
     fig.add_axes(ax)
     image = image.real
-    if type == 'image':
-        vmin = 0
-        vmax = 2
-        ax.imshow(image, cmap='gray', vmin=vmin, vmax=vmax, aspect='auto', interpolation='none')
-    elif type == 'phase':
-        vmin = -3
-        vmax = 3
-        ax.imshow(image, cmap='gray', vmin=vmin, vmax=vmax, aspect='auto', interpolation='none')
-    elif type == 'error':
-        vmin = -1
-        vmax = 1
-        ax.imshow(image, cmap='gray', vmin=vmin, vmax=vmax, aspect='auto', interpolation='none')
-    else:
+    if limits is None:
         ax.imshow(image, cmap='gray', aspect='auto', interpolation='none')
+    else:
+        vmin = limits[0]
+        vmax = limits[1]
+        ax.imshow(image, cmap='gray', vmin=vmin, vmax=vmax, aspect='auto', interpolation='none')
     # Remove tick marks from plot
 
     plt.savefig(output_path, dpi=800)
