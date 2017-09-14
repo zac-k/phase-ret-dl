@@ -2345,7 +2345,6 @@ class PhaseImagingSystem(object):
     def remove_offset(self):
         offset = self.phase_retrieved - self.phase_exact
         offset_avg = np.mean(np.mean(offset))
-        print(offset_avg)
         self.phase_retrieved = self.phase_retrieved - offset_avg
 
     def retrieve_phase(self):
