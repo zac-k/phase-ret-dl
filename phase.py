@@ -6,6 +6,7 @@ import pyprind, sys
 import random as rnd
 from numba import jit
 from unwrap import unwrap
+from scipy.ndimage import rotate, zoom, shift
 np.set_printoptions(threshold=10)
 
 
@@ -109,14 +110,70 @@ class PhaseImagingSystem(object):
                                              axis=random_axis,
                                              angle=random_angle)
 
+    @staticmethod
+    def scale(img, zoom_factor, **kwargs):
+        """
+        Courtesy of ali_m on StackOverflow
+        https://stackoverflow.com/questions/37119071/scipy-rotate-and-zoom-an-image-without-changing-its-dimensions
+        """
 
-    # def extract_phase_from_wavefield(self, wave):
-    #
-    #     nx = len(wave)
-    #     ny = len(wave[0])
-    #
-    #     for i in range(nx):
-    #         for j in range(ny):
+        h, w = img.shape[:2]
+
+        # width and height of the zoomed image
+        zh = int(np.round(zoom_factor * h))
+        zw = int(np.round(zoom_factor * w))
+
+        # for multichannel images we don't want to apply the zoom factor to the RGB
+        # dimension, so instead we create a tuple of zoom factors, one per array
+        # dimension, with 1's for any trailing dimensions after the width and height.
+        zoom_tuple = (zoom_factor,) * 2 + (1,) * (img.ndim - 2)
+
+        # zooming out
+        if zoom_factor < 1:
+            # bounding box of the clip region within the output array
+            top = (h - zh) // 2
+            left = (w - zw) // 2
+            # zero-padding
+            out = np.zeros_like(img)
+            out[top:top + zh, left:left + zw] = zoom(img, zoom_tuple, **kwargs)
+
+        # zooming in
+        elif zoom_factor > 1:
+            # bounding box of the clip region within the input array
+            top = (zh - h) // 2
+            left = (zw - w) // 2
+            out = zoom(img[top:top + zh, left:left + zw], zoom_tuple, **kwargs)
+            # `out` might still be slightly larger than `img` due to rounding, so
+            # trim off any extra pixels at the edges
+            trim_top = ((out.shape[0] - h) // 2)
+            trim_left = ((out.shape[1] - w) // 2)
+            out = out[trim_top:trim_top + h, trim_left:trim_left + w]
+
+        # if zoom_factor == 1, just return the input array
+        else:
+            out = img
+        return out
+    def rotate_images(self, std):
+        angle = np.random.normal(scale=std)
+        self.image_under = rotate(input=self.image_under, angle=angle, reshape=False, cval=1.0)
+        angle = np.random.normal(scale=std)
+        self.image_over = rotate(input=self.image_over, angle=angle, reshape=False, cval=1.0)
+
+    def scale_images(self, std):
+        factor = np.random.normal(loc=1.0, scale=std)
+        self.image_under = PhaseImagingSystem.scale(self.image_under, factor, cval=1.0)
+        factor = np.random.normal(loc=1.0, scale=std)
+        self.image_over = PhaseImagingSystem.scale(self.image_over, factor, cval=1.0)
+
+    def shift_images(self, std):
+        angle = np.random.uniform(0, 2 * PI)
+        r = np.abs(np.random.normal(scale=std))
+
+        disp = [r * np.cos(angle), r * np.sin(angle)]
+        self.image_under = shift(input=self.image_under, shift=disp, cval=1.0)
+        disp = [np.random.normal(scale=std), np.random.normal(scale=std)]
+        self.image_over = shift(input=self.image_over, shift=disp, cval=1.0)
+
 
     @staticmethod
     def extract_phase_from_wavefield(wave):

@@ -97,14 +97,16 @@ f = open('./data/figures/errors.txt', 'w')
 # variable closer to where they are used.
 hyperparameters = {'Hidden Layer Size': 50000,
                    'Number of Hidden Layers': 1,
-                   'Input Type': 'phases',
-                   'Train/Valid/Test Split': [5, 0, 5],
+                   'Input Type': 'images',
+                   'Train/Valid/Test Split': [5000, 0, 100],
                    'Batch Size': 50,
                    'Optimiser Type': 'gradient descent',
                    'Learning Rate': 0.5,
                    'Use Convolutional Layers': False,
-                   'Number of Epochs': 50,
-                   'Pre-remove Offset': False}
+                   'Number of Epochs': 50}
+simulation_parameters = {'Pre-remove Offset': False,
+                         'Misalignment': [True, True, True],  # rotation, scale, translation
+                         'Rotation/Scale/Shift': [3, 0.02, 0.01]}  # Rotation is in degrees
 imaging_parameters = {'Window Function Radius': 0.5,
                       'Use Multislice': False,
                       'Multislice Method': 'files',
@@ -112,7 +114,7 @@ imaging_parameters = {'Window Function Radius': 0.5,
                       'Image Size in Pixels': 64,
                       'Multislice Resolution in Pixels': 1024,
                       'Noise Level': 0.00,
-                      'Defocus': 80e-6,
+                      'Defocus': 8e-6,
                       'Error Limits': [-2, 2],
                       'Phase Limits': [-3, 3],
                       'Image Limits': [0, 2]}
@@ -183,10 +185,18 @@ for item in range(num_train):
            item=item,
            path=imaging_parameters['Multislice Wavefield Path'])
     system_train.generate_images()
+    if simulation_parameters['Misalignment'][0]:
+        system_train.rotate_images(std=simulation_parameters['Rotation/Scale/Shift'][0])
+    if simulation_parameters['Misalignment'][1]:
+        system_train.scale_images(simulation_parameters['Rotation/Scale/Shift'][1])
+    if simulation_parameters['Misalignment'][2]:
+        system_train.shift_images(std=img_size*simulation_parameters['Rotation/Scale/Shift'][2])
     system_train.apodise_images(imaging_parameters['Window Function Radius'])
     system_train.retrieve_phase()
-    if hyperparameters['Pre-remove Offset']:
+    if simulation_parameters['Pre-remove Offset']:
         system_train.remove_offset()
+
+
     system_train.apodise_phases(imaging_parameters['Window Function Radius'])
     phase_exact_flat_train.append(system_train.phase_exact.real.reshape(img_size_flat))
     phase_retrieved_flat_train.append(system_train.phase_retrieved.real.reshape(img_size_flat))
@@ -241,9 +251,15 @@ for item in range(num_train, num_test + num_train):
                                            item=item,
                                            path=imaging_parameters['Multislice Wavefield Path'])
     system_test.generate_images()
+    if simulation_parameters['Misalignment'][0]:
+        system_test.rotate_images(std=simulation_parameters['Rotation/Scale/Shift'][0])
+    if simulation_parameters['Misalignment'][1]:
+        system_test.scale_images(std=simulation_parameters['Rotation/Scale/Shift'][1])
+    if simulation_parameters['Misalignment'][2]:
+        system_test.shift_images(std=img_size*simulation_parameters['Rotation/Scale/Shift'][2])
     system_test.apodise_images(imaging_parameters['Window Function Radius'])
     system_test.retrieve_phase()
-    if hyperparameters['Pre-remove Offset']:
+    if simulation_parameters['Pre-remove Offset']:
         system_test.remove_offset()
     system_test.apodise_phases(imaging_parameters['Window Function Radius'])
     phase_exact_flat_test.append(system_test.phase_exact.real.reshape(img_size_flat))
