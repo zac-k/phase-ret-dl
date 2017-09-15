@@ -98,7 +98,7 @@ f = open('./data/figures/errors.txt', 'w')
 hyperparameters = {'Hidden Layer Size': 50000,
                    'Number of Hidden Layers': 1,
                    'Input Type': 'images',
-                   'Train/Valid/Test Split': [5000, 0, 100],
+                   'Train/Valid/Test Split': [1000, 0, 1],
                    'Batch Size': 50,
                    'Optimiser Type': 'gradient descent',
                    'Learning Rate': 0.5,
@@ -106,22 +106,26 @@ hyperparameters = {'Hidden Layer Size': 50000,
                    'Number of Epochs': 50}
 simulation_parameters = {'Pre-remove Offset': False,
                          'Misalignment': [True, True, True],  # rotation, scale, translation
-                         'Rotation/Scale/Shift': [3, 0.02, 0.01]}  # Rotation is in degrees
+                         'Rotation/Scale/Shift': [3, 0.02, 0.01],  # Rotation is in degrees
+                         'Load Model': False,  # True is not implemented yet
+                         'Experimental Test Data': True}
 imaging_parameters = {'Window Function Radius': 0.5,
+                      'Accelerating Voltage': 200,  # electron accelerating voltage in keV
                       'Use Multislice': False,
                       'Multislice Method': 'files',
                       'Multislice Wavefield Path': 'D:/code/images/multislice/',
                       'Image Size in Pixels': 64,
                       'Multislice Resolution in Pixels': 1024,
+                      'Domain Size': 1000e-9,  # Width of images in metres
                       'Noise Level': 0.00,
-                      'Defocus': 8e-6,
+                      'Defocus': 12e-6,
                       'Error Limits': [-2, 2],
-                      'Phase Limits': [-3, 3],
+                      'Phase Limits': [-50, 50],
                       'Image Limits': [0, 2]}
+specimen_parameters = {'Mean Inner Potential': -17 - 0.1j}
+exp_path = './data/images/experimental/'
+
 n_savefile_sets = hyperparameters['Train/Valid/Test Split']
-
-
-
 utils.write_dict(f, hyperparameters)
 utils.write_dict(f, imaging_parameters)
 
@@ -141,7 +145,7 @@ kernel_size = [5, 16]
 num_kernels = [16, 36]
 
 # Set mean inner potential and noise level
-mip = -17 - 1j
+mip = specimen_parameters['Mean Inner Potential']
 noise_level = imaging_parameters['Noise Level']
 
 # Set whether to use images or retrieved phases as input data
@@ -173,8 +177,8 @@ for item in range(num_train):
     system_train = phase.PhaseImagingSystem(
            image_size=img_size,
            defocus=imaging_parameters['Defocus'],
-           image_width=150e-9,
-           energy=300e3,
+           image_width=imaging_parameters['Domain Size'],
+           energy=imaging_parameters['Accelerating Voltage']*1e3,
            specimen_file=specimen_files[item],
            mip=mip,
            is_attenuating=True,
@@ -239,8 +243,8 @@ for item in range(num_train, num_test + num_train):
     test_generate_bar.update()
     system_test = phase.PhaseImagingSystem(image_size=img_size,
                                            defocus=imaging_parameters['Defocus'],
-                                           image_width=150e-9,
-                                           energy=300e3,
+                                           image_width=imaging_parameters['Domain Size'],
+                                           energy=imaging_parameters['Accelerating Voltage']*1e3,
                                            specimen_file=specimen_files[item],
                                            mip=mip,
                                            is_attenuating=True,
@@ -250,13 +254,22 @@ for item in range(num_train, num_test + num_train):
                                            M=M,
                                            item=item,
                                            path=imaging_parameters['Multislice Wavefield Path'])
-    system_test.generate_images()
-    if simulation_parameters['Misalignment'][0]:
-        system_test.rotate_images(std=simulation_parameters['Rotation/Scale/Shift'][0])
-    if simulation_parameters['Misalignment'][1]:
-        system_test.scale_images(std=simulation_parameters['Rotation/Scale/Shift'][1])
-    if simulation_parameters['Misalignment'][2]:
-        system_test.shift_images(std=img_size*simulation_parameters['Rotation/Scale/Shift'][2])
+    if simulation_parameters['Experimental Test Data']:
+        system_test.image_under = utils.import_micrograph(
+            exp_path + '-12um_100umOA(' + str(item - num_train) + ')', img_size)
+        system_test.image_in = utils.import_micrograph(
+            exp_path + '0um_100umOA(' + str(item - num_train) + ')', img_size)
+        system_test.image_over = utils.import_micrograph(
+            exp_path + '12um_100umOA(' + str(item - num_train) + ')', img_size)
+    else:
+        system_test.generate_images()
+        if simulation_parameters['Misalignment'][0]:
+            system_test.rotate_images(std=simulation_parameters['Rotation/Scale/Shift'][0])
+        if simulation_parameters['Misalignment'][1]:
+            system_test.scale_images(std=simulation_parameters['Rotation/Scale/Shift'][1])
+        if simulation_parameters['Misalignment'][2]:
+            system_test.shift_images(std=img_size*simulation_parameters['Rotation/Scale/Shift'][2])
+
     system_test.apodise_images(imaging_parameters['Window Function Radius'])
     system_test.retrieve_phase()
     if simulation_parameters['Pre-remove Offset']:
@@ -283,7 +296,7 @@ for item in range(num_train, num_test + num_train):
 
 # Calculate and print average normalised rms error in test set prior to processing
 # through neural network
-if len(phase_exact_flat_test) > 0:
+if len(phase_exact_flat_test) > 0 and not simulation_parameters['Experimental Test Data']:
     error_pre_adj = utils.average_normalised_rms_error_flat(phase_exact_flat_test, phase_retrieved_flat_test)
     print("Accuracy on test set (pre adjustment): {0: .1%}".format(error_pre_adj))
     f.write("Accuracy on test set (pre adjustment): {0: .1%}".format(error_pre_adj) + '\n')
@@ -405,91 +418,32 @@ for q in range(num_epochs):
 
             session.run(optimizer, feed_dict=feed_dict_train)
 
-
-# Calculate and print average normalised rms error in test set after processing through
-# trained neural network
-error = tf.sqrt(tf.reduce_sum(tf.squared_difference(y_true, output), 1) / tf.reduce_sum(tf.square(y_true), 1))
-accuracy = tf.reduce_mean(error)
-acc, x_val = session.run([accuracy, x], feed_dict=feed_dict_test)
-print("Accuracy on ", "test", "-set (post-adjustment): {0: .1%}".format(acc), sep='')
-f.write("Accuracy on test-set (post-adjustment): {0: .1%}".format(acc) + '\n')
-
 # Obtain output of neural net on test set
 output_images = session.run(output, feed_dict=feed_dict_test)
 
-# Calculate average rms error between test outputs and the mean of the
-# training target images (exact phases) and print it
-error_test_vs_train = 0
-for output_image in output_images:
-    error_test_vs_train += np.sqrt(
-                        np.sum(np.square(mean_exact_train -
-                                         output_image)) / np.sum(np.square(mean_exact_train))
-                )
-error_test_vs_train /= num_test
-print("Accuracy on ", "test input", " compared to training output: {0: .1%}".format(error_test_vs_train), sep='')
-f.write("Accuracy on test input compared to training output: {0: .1%}".format(error_test_vs_train) + '\n')
-# result_for_printing = []
-# result_for_printing.append(plot.PrintableData(np.reshape(phase_exact_flat_train[0], img_shape),
-#                                               'training example',
-#                                               'phase'))
-# result_for_printing.append(plot.PrintableData(np.reshape(phase_retrieved_flat_train[0], img_shape),
-#                                               'training example (retrieved)',
-#                                               'phase',
-#                                               comment="{0: .1%} (ave'd)".format(error_train),))
-# result_for_printing.append(plot.PrintableData(np.reshape(phase_exact_flat_train[1], img_shape),
-#                                               'training example',
-#                                               'phase'))
-# result_for_printing.append(plot.PrintableData(np.reshape(phase_retrieved_flat_train[1], img_shape),
-#                                               'training example (retrieved)',
-#                                               'phase',
-#                                               comment="{0: .1%} (ave'd)".format(error_train),))
-# result_for_printing.append(plot.PrintableData(np.reshape(phase_exact_flat_train[2], img_shape),
-#                                               'training example',
-#                                               'phase'))
-# result_for_printing.append(plot.PrintableData(np.reshape(phase_retrieved_flat_train[2], img_shape),
-#                                               'training example (retrieved)',
-#                                               'phase',
-#                                               comment="{0: .1%} (ave'd)".format(error_train),))
-# result_for_printing.append(plot.PrintableData(np.reshape(phase_exact_flat_train[3], img_shape),
-#                                               'training example',
-#                                               'phase'))
-# result_for_printing.append(plot.PrintableData(np.reshape(phase_retrieved_flat_train[3], img_shape),
-#                                               'training example (retrieved)',
-#                                               'phase',
-#                                               comment="{0: .1%} (ave'd)".format(error_train),))
-# result_for_printing.append(plot.PrintableData(np.reshape(phase_exact_flat_train[4], img_shape),
-#                                               'training example',
-#                                               'phase'))
-# result_for_printing.append(plot.PrintableData(np.reshape(phase_retrieved_flat_train[4], img_shape),
-#                                               'training example (retrieved)',
-#                                               'phase',
-#                                               comment="{0: .1%} (ave'd)".format(error_train),))
-# result_for_printing.append(plot.PrintableData(np.reshape(phase_exact_flat_train[5], img_shape),
-#                                               'training example',
-#                                               'phase'))
-# result_for_printing.append(plot.PrintableData(np.reshape(phase_retrieved_flat_train[5], img_shape),
-#                                               'training example (retrieved)',
-#                                               'phase',
-#                                               comment="{0: .1%} (ave'd)".format(error_train),))
-# # result_for_printing.append(plot.PrintableData(np.reshape(mean_exact_train, img_shape),
-# #                                               'mean training example',
-# #                                               'phase'))
-# result_for_printing.append(plot.PrintableData(np.reshape(phase_exact_flat_test[0], img_shape),
-#                                               'test example',
-#                                               'phase'))
-# result_for_printing.append(plot.PrintableData(np.reshape(phase_retrieved_flat_test[0], img_shape),
-#                                               'test example (retrieved)',
-#                                               'phase',
-#                                               comment="{0: .1%}".format(error_pre_adj)))
-# result_for_printing.append(plot.PrintableData(output_images[0].reshape(img_shape),
-#                                               'test example (ret_adj)',
-#                                               'phase',
-#                                               comment="{0: .1%}".format(acc)))
-#
-#
-#
-error_ret = (np.array(phase_retrieved_flat_test) - np.array(phase_exact_flat_test)).tolist()
-error_adj = (np.array(output_images) - np.array(phase_exact_flat_test)).tolist()
+if not simulation_parameters['Experimental Test Data']:
+    # Calculate and print average normalised rms error in test set after processing through
+    # trained neural network
+    error = tf.sqrt(tf.reduce_sum(tf.squared_difference(y_true, output), 1) / tf.reduce_sum(tf.square(y_true), 1))
+    accuracy = tf.reduce_mean(error)
+    acc, x_val = session.run([accuracy, x], feed_dict=feed_dict_test)
+    print("Accuracy on ", "test", "-set (post-adjustment): {0: .1%}".format(acc), sep='')
+    f.write("Accuracy on test-set (post-adjustment): {0: .1%}".format(acc) + '\n')
+
+    # Calculate average rms error between test outputs and the mean of the
+    # training target images (exact phases) and print it
+    error_test_vs_train = 0
+    for output_image in output_images:
+        error_test_vs_train += np.sqrt(
+                            np.sum(np.square(mean_exact_train -
+                                             output_image)) / np.sum(np.square(mean_exact_train))
+                    )
+    error_test_vs_train /= num_test
+    print("Accuracy on ", "test input", " compared to training output: {0: .1%}".format(error_test_vs_train), sep='')
+    f.write("Accuracy on test input compared to training output: {0: .1%}".format(error_test_vs_train) + '\n')
+
+    error_ret = (np.array(phase_retrieved_flat_test) - np.array(phase_exact_flat_test)).tolist()
+    error_adj = (np.array(output_images) - np.array(phase_exact_flat_test)).tolist()
 
 for i in range(n_savefile_sets[0]):
     plot.save_image(np.reshape(phase_exact_flat_train[i], img_shape),
@@ -498,44 +452,48 @@ for i in range(n_savefile_sets[0]):
     plot.save_image(np.reshape(phase_retrieved_flat_train[i], img_shape),
                     './data/figures/phase_retrieved_train_' + str(i) + '.png',
                     imaging_parameters['Phase Limits'])
+
 for i in range(n_savefile_sets[2]):
-    plot.save_image(np.reshape(phase_exact_flat_test[i], img_shape),
-                    './data/figures/phase_exact_test_' + str(i) + '.png',
-                    imaging_parameters['Phase Limits'])
+    if not simulation_parameters['Experimental Test Data']:
+        plot.save_image(np.reshape(phase_exact_flat_test[i], img_shape),
+                        './data/figures/phase_exact_test_' + str(i) + '.png',
+                        imaging_parameters['Phase Limits'])
+        plot.save_image(np.reshape(error_ret[i], img_shape),
+                        './data/figures/error_retrieved_test_' + str(i) + '.png',
+                        imaging_parameters['Error Limits'])
+        plot.save_image(np.reshape(error_adj[i], img_shape),
+                        './data/figures/error_adjusted_test_' + str(i) + '.png',
+                        imaging_parameters['Error Limits'])
     plot.save_image(np.reshape(phase_retrieved_flat_test[i], img_shape),
                     './data/figures/phase_retrieved_test_' + str(i) + '.png',
                     imaging_parameters['Phase Limits'])
     plot.save_image(np.reshape(output_images[i], img_shape),
                     './data/figures/phase_adjusted_test_' + str(i) + '.png',
                     imaging_parameters['Phase Limits'])
-    plot.save_image(np.reshape(error_ret[i], img_shape),
-                    './data/figures/error_retrieved_test_' + str(i) + '.png',
-                    imaging_parameters['Error Limits'])
-    plot.save_image(np.reshape(error_adj[i], img_shape),
-                    './data/figures/error_adjusted_test_' + str(i) + '.png',
-                    imaging_parameters['Error Limits'])
+
 
 
 errors = pd.DataFrame({})
-for i in range(num_test):
-    error_test = utils.normalised_rms_error(phase_exact_flat_test[i], phase_retrieved_flat_test[i])
-    f.write("Accuracy on test input " + str(i) + ": {0: .1%}".format(error_test) + '\n')
 
-accuracy = tf.sqrt(tf.reduce_sum(tf.squared_difference(y_true, output), 1) / tf.reduce_sum(tf.square(y_true), 1))
-acc, x_val = session.run([accuracy, x], feed_dict=feed_dict_test)
-for i, output_image in enumerate(output_images):
-    f.write("Accuracy on test input " + str(i) + "(adjusted): {0: .1%}".format(acc[i]) + '\n')
+if not simulation_parameters['Experimental Test Data']:
+    for i in range(num_test):
+        error_test = utils.normalised_rms_error(phase_exact_flat_test[i], phase_retrieved_flat_test[i])
+        f.write("Accuracy on test input " + str(i) + ": {0: .1%}".format(error_test) + '\n')
+
+    accuracy = tf.sqrt(tf.reduce_sum(tf.squared_difference(y_true, output), 1) / tf.reduce_sum(tf.square(y_true), 1))
+    acc, x_val = session.run([accuracy, x], feed_dict=feed_dict_test)
+    for i, output_image in enumerate(output_images):
+        f.write("Accuracy on test input " + str(i) + "(adjusted): {0: .1%}".format(acc[i]) + '\n')
 
 for i in range(num_train):
     error_train = utils.normalised_rms_error(phase_exact_flat_train[i], phase_retrieved_flat_train[i])
     f.write("Accuracy on training input " + str(i) + ": {0: .1%}".format(error_train) + '\n')
 
-
-
-
-
 f.close()
-# Plot images
-#plot.plot_images(result_for_printing)
+
+# Save trained model
+saver = tf.train.Saver()
+saver.save(session, './data/figures/model')
+
 #utils.beep()  # Alert user that script has finished
 show()  # Prevent plt.show(block=False) from closing plot window

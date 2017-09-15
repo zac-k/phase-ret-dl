@@ -58,3 +58,16 @@ def write_dict(file, dict):
     for key, value in dict.items():
         file.write('%s:%s\n' % (key, value) + '\n')
     return
+
+
+def import_micrograph(micrograph_file, pix):
+
+    with open(micrograph_file, 'r') as f:
+        f.seek(0)
+        image_temp = np.zeros((pix, pix), dtype=complex)
+
+        for i in range(pix):
+            line = f.readline().split()
+            for j in range(pix):
+                image_temp[i, j] = float(line[j])
+    return image_temp
