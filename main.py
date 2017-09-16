@@ -98,7 +98,8 @@ f = open('./data/figures/errors.txt', 'w')
 hyperparameters = {'Hidden Layer Size': 50000,
                    'Number of Hidden Layers': 1,
                    'Input Type': 'images',
-                   'Train/Valid/Test Split': [1000, 0, 1],
+                   'Number of Images': 2,
+                   'Train/Valid/Test Split': [200, 0, 10],
                    'Batch Size': 50,
                    'Optimiser Type': 'gradient descent',
                    'Learning Rate': 0.5,
@@ -108,19 +109,19 @@ simulation_parameters = {'Pre-remove Offset': False,
                          'Misalignment': [True, True, True],  # rotation, scale, translation
                          'Rotation/Scale/Shift': [3, 0.02, 0.01],  # Rotation is in degrees
                          'Load Model': False,  # True is not implemented yet
-                         'Experimental Test Data': True}
+                         'Experimental Test Data': False}
 imaging_parameters = {'Window Function Radius': 0.5,
-                      'Accelerating Voltage': 200,  # electron accelerating voltage in keV
+                      'Accelerating Voltage': 300,  # electron accelerating voltage in keV
                       'Use Multislice': False,
                       'Multislice Method': 'files',
                       'Multislice Wavefield Path': 'D:/code/images/multislice/',
                       'Image Size in Pixels': 64,
                       'Multislice Resolution in Pixels': 1024,
-                      'Domain Size': 1000e-9,  # Width of images in metres
-                      'Noise Level': 0.00,
-                      'Defocus': 12e-6,
+                      'Domain Size': 150e-9,  # Width of images in metres
+                      'Noise Level': 0.05,
+                      'Defocus': 8e-6,
                       'Error Limits': [-2, 2],
-                      'Phase Limits': [-50, 50],
+                      'Phase Limits': [-3, 3],
                       'Image Limits': [0, 2]}
 specimen_parameters = {'Mean Inner Potential': -17 - 0.1j}
 exp_path = './data/images/experimental/'
@@ -151,6 +152,9 @@ noise_level = imaging_parameters['Noise Level']
 # Set whether to use images or retrieved phases as input data
 input_type = hyperparameters['Input Type']
 assert input_type == 'images' or input_type == 'phases'
+# Set number of images used in through focal series
+n_images = hyperparameters['Number of Images']
+assert n_images == 2 or n_images == 3
 
 # Create arrays to hold flattened training data
 phase_exact_flat_train = []
@@ -188,13 +192,14 @@ for item in range(num_train):
            M=M,
            item=item,
            path=imaging_parameters['Multislice Wavefield Path'])
-    system_train.generate_images()
+    system_train.generate_images(n_images)
     if simulation_parameters['Misalignment'][0]:
         system_train.rotate_images(std=simulation_parameters['Rotation/Scale/Shift'][0])
     if simulation_parameters['Misalignment'][1]:
         system_train.scale_images(simulation_parameters['Rotation/Scale/Shift'][1])
     if simulation_parameters['Misalignment'][2]:
         system_train.shift_images(std=img_size*simulation_parameters['Rotation/Scale/Shift'][2])
+    system_train.add_noise_to_micrographs()
     system_train.apodise_images(imaging_parameters['Window Function Radius'])
     system_train.retrieve_phase()
     if simulation_parameters['Pre-remove Offset']:
@@ -209,17 +214,22 @@ for item in range(num_train):
         plot.save_image(system_train.image_under,
                         './data/figures/image_train_under_' + str(item) + '.png',
                     imaging_parameters['Image Limits'])
-        plot.save_image(system_train.image_in,
-                        './data/figures/image_train_in_' + str(item) + '.png',
-                    imaging_parameters['Image Limits'])
+        if n_images == 3:
+            plot.save_image(system_train.image_in,
+                            './data/figures/image_train_in_' + str(item) + '.png',
+                        imaging_parameters['Image Limits'])
         plot.save_image(system_train.image_over,
                         './data/figures/image_train_over_' + str(item) + '.png',
                     imaging_parameters['Image Limits'])
 
     if input_type == 'images':
-        image_flat_train.append(np.concatenate((system_train.image_under.real.reshape(img_size_flat),
-                                system_train.image_in.real.reshape(img_size_flat),
-                                system_train.image_over.real.reshape(img_size_flat))))
+        if n_images == 3:
+            image_flat_train.append(np.concatenate((system_train.image_under.real.reshape(img_size_flat),
+                                    system_train.image_in.real.reshape(img_size_flat),
+                                    system_train.image_over.real.reshape(img_size_flat))))
+        elif n_images == 2:
+            image_flat_train.append(np.concatenate((system_train.image_under.real.reshape(img_size_flat),
+                                    system_train.image_over.real.reshape(img_size_flat))))
 
 
 
@@ -256,19 +266,19 @@ for item in range(num_train, num_test + num_train):
                                            path=imaging_parameters['Multislice Wavefield Path'])
     if simulation_parameters['Experimental Test Data']:
         system_test.image_under = utils.import_micrograph(
-            exp_path + '-12um_100umOA(' + str(item - num_train) + ')', img_size)
-        system_test.image_in = utils.import_micrograph(
-            exp_path + '0um_100umOA(' + str(item - num_train) + ')', img_size)
+            exp_path + 'tims_data_-10um(' + str(item - num_train) + ')', img_size)
+        system_test.image_in = (system_test.image_under + system_test.image_over) / 2
         system_test.image_over = utils.import_micrograph(
-            exp_path + '12um_100umOA(' + str(item - num_train) + ')', img_size)
+            exp_path + 'tims_data_10um(' + str(item - num_train) + ')', img_size)
     else:
-        system_test.generate_images()
+        system_test.generate_images(n_images)
         if simulation_parameters['Misalignment'][0]:
             system_test.rotate_images(std=simulation_parameters['Rotation/Scale/Shift'][0])
         if simulation_parameters['Misalignment'][1]:
             system_test.scale_images(std=simulation_parameters['Rotation/Scale/Shift'][1])
         if simulation_parameters['Misalignment'][2]:
             system_test.shift_images(std=img_size*simulation_parameters['Rotation/Scale/Shift'][2])
+        system_test.add_noise_to_micrographs()
 
     system_test.apodise_images(imaging_parameters['Window Function Radius'])
     system_test.retrieve_phase()
@@ -288,9 +298,13 @@ for item in range(num_train, num_test + num_train):
                         './data/figures/image_test_over_' + str(item - num_train) + '.png',
                     imaging_parameters['Image Limits'])
     if input_type == 'images':
-        image_flat_test.append(np.concatenate((system_test.image_under.real.reshape(img_size_flat),
-                               system_test.image_in.real.reshape(img_size_flat),
-                               system_test.image_over.real.reshape(img_size_flat))))
+        if n_images == 3:
+            image_flat_test.append(np.concatenate((system_test.image_under.real.reshape(img_size_flat),
+                                   system_test.image_in.real.reshape(img_size_flat),
+                                   system_test.image_over.real.reshape(img_size_flat))))
+        else:
+            image_flat_test.append(np.concatenate((system_test.image_under.real.reshape(img_size_flat),
+                                   system_test.image_over.real.reshape(img_size_flat))))
 
 
 
@@ -303,8 +317,8 @@ if len(phase_exact_flat_test) > 0 and not simulation_parameters['Experimental Te
 
 # Determine number of nodes in input layer
 if input_type == 'images':
-    input_size = 3 * img_size_flat
-    num_channels = 3
+    input_size = n_images * img_size_flat
+    num_channels = n_images
 elif input_type == 'phases':
     input_size = img_size_flat
     num_channels = 1
@@ -418,27 +432,30 @@ for q in range(num_epochs):
 
             session.run(optimizer, feed_dict=feed_dict_train)
 
+
+
+
+# Calculate and print average normalised rms error in test set after processing through
+# trained neural network
+error = tf.sqrt(tf.reduce_sum(tf.squared_difference(y_true, output), 1) / tf.reduce_sum(tf.square(y_true), 1))
+accuracy = tf.reduce_mean(error)
+acc, x_val = session.run([accuracy, x], feed_dict=feed_dict_test)
+print("Accuracy on ", "test", "-set (post-adjustment): {0: .1%}".format(acc), sep='')
+f.write("Accuracy on test-set (post-adjustment): {0: .1%}".format(acc) + '\n')
+
 # Obtain output of neural net on test set
 output_images = session.run(output, feed_dict=feed_dict_test)
 
+# Calculate average rms error between test outputs and the mean of the
+# training target images (exact phases) and print it
+error_test_vs_train = 0
+for output_image in output_images:
+    error_test_vs_train += np.sqrt(
+                        np.sum(np.square(mean_exact_train -
+                                         output_image)) / np.sum(np.square(mean_exact_train))
+                )
+error_test_vs_train /= num_test
 if not simulation_parameters['Experimental Test Data']:
-    # Calculate and print average normalised rms error in test set after processing through
-    # trained neural network
-    error = tf.sqrt(tf.reduce_sum(tf.squared_difference(y_true, output), 1) / tf.reduce_sum(tf.square(y_true), 1))
-    accuracy = tf.reduce_mean(error)
-    acc, x_val = session.run([accuracy, x], feed_dict=feed_dict_test)
-    print("Accuracy on ", "test", "-set (post-adjustment): {0: .1%}".format(acc), sep='')
-    f.write("Accuracy on test-set (post-adjustment): {0: .1%}".format(acc) + '\n')
-
-    # Calculate average rms error between test outputs and the mean of the
-    # training target images (exact phases) and print it
-    error_test_vs_train = 0
-    for output_image in output_images:
-        error_test_vs_train += np.sqrt(
-                            np.sum(np.square(mean_exact_train -
-                                             output_image)) / np.sum(np.square(mean_exact_train))
-                    )
-    error_test_vs_train /= num_test
     print("Accuracy on ", "test input", " compared to training output: {0: .1%}".format(error_test_vs_train), sep='')
     f.write("Accuracy on test input compared to training output: {0: .1%}".format(error_test_vs_train) + '\n')
 

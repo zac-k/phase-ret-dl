@@ -2334,27 +2334,35 @@ class PhaseImagingSystem(object):
 
         return np.absolute(wavefunction) * np.absolute(wavefunction)
 
-    def generate_images(self):
+    def generate_images(self, n_images):
+        assert n_images == 2 or n_images == 3
         """
         Compute images at under-, in-, and over-focus
         :return:
         """
         self.image_over = self._transfer_image(defocus=-self.defocus)
         self.image_under = self._transfer_image(defocus=self.defocus)
-        self.image_in = self._transfer_image(defocus=0)
-        while len(self.image_under) > self.image_size:
-            self.image_under = PhaseImagingSystem._downsample(self.image_under)
+        if n_images == 3:
+            self.image_in = self._transfer_image(defocus=0)
+        else:
+            self.image_in = (self.image_over + self.image_under) / 2
         while len(self.image_in) > self.image_size:
             self.image_in = PhaseImagingSystem._downsample(self.image_in)
+        while len(self.image_under) > self.image_size:
+            self.image_under = PhaseImagingSystem._downsample(self.image_under)
         while len(self.image_over) > self.image_size:
             self.image_over = PhaseImagingSystem._downsample(self.image_over)
-        if self.noise_level != 0:
-            for image in [self.image_under,
-                          self.image_in,
-                          self.image_over]:
-                self._add_noise(image)
-
         return
+
+    def add_noise_to_micrographs(self):
+        images = [self.image_under,
+                  self.image_in,
+                  self.image_over]
+        if self.noise_level != 0:
+            for image in images:
+                self._add_noise(image)
+        return
+
 
     @staticmethod
     def apodise(image, rad_sup=0.3):
