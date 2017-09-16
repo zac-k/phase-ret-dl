@@ -99,7 +99,7 @@ hyperparameters = {'Hidden Layer Size': 50000,
                    'Number of Hidden Layers': 1,
                    'Input Type': 'images',
                    'Number of Images': 2,
-                   'Train/Valid/Test Split': [200, 0, 10],
+                   'Train/Valid/Test Split': [2000, 0, 1],
                    'Batch Size': 50,
                    'Optimiser Type': 'gradient descent',
                    'Learning Rate': 0.5,
@@ -109,7 +109,7 @@ simulation_parameters = {'Pre-remove Offset': False,
                          'Misalignment': [True, True, True],  # rotation, scale, translation
                          'Rotation/Scale/Shift': [3, 0.02, 0.01],  # Rotation is in degrees
                          'Load Model': False,  # True is not implemented yet
-                         'Experimental Test Data': False}
+                         'Experimental Test Data': True}
 imaging_parameters = {'Window Function Radius': 0.5,
                       'Accelerating Voltage': 300,  # electron accelerating voltage in keV
                       'Use Multislice': False,
@@ -117,11 +117,11 @@ imaging_parameters = {'Window Function Radius': 0.5,
                       'Multislice Wavefield Path': 'D:/code/images/multislice/',
                       'Image Size in Pixels': 64,
                       'Multislice Resolution in Pixels': 1024,
-                      'Domain Size': 150e-9,  # Width of images in metres
-                      'Noise Level': 0.05,
+                      'Domain Size': 510.76e-9,  # Width of images in metres
+                      'Noise Level': 0.02,
                       'Defocus': 8e-6,
-                      'Error Limits': [-2, 2],
-                      'Phase Limits': [-3, 3],
+                      'Error Limits': [-12, 12],
+                      'Phase Limits': [-12, 12],
                       'Image Limits': [0, 2]}
 specimen_parameters = {'Mean Inner Potential': -17 - 0.1j}
 exp_path = './data/images/experimental/'
@@ -214,10 +214,9 @@ for item in range(num_train):
         plot.save_image(system_train.image_under,
                         './data/figures/image_train_under_' + str(item) + '.png',
                     imaging_parameters['Image Limits'])
-        if n_images == 3:
-            plot.save_image(system_train.image_in,
-                            './data/figures/image_train_in_' + str(item) + '.png',
-                        imaging_parameters['Image Limits'])
+        plot.save_image(system_train.image_in,
+                        './data/figures/image_train_in_' + str(item) + '.png',
+                    imaging_parameters['Image Limits'])
         plot.save_image(system_train.image_over,
                         './data/figures/image_train_over_' + str(item) + '.png',
                     imaging_parameters['Image Limits'])
@@ -267,9 +266,9 @@ for item in range(num_train, num_test + num_train):
     if simulation_parameters['Experimental Test Data']:
         system_test.image_under = utils.import_micrograph(
             exp_path + 'tims_data_-10um(' + str(item - num_train) + ')', img_size)
-        system_test.image_in = (system_test.image_under + system_test.image_over) / 2
         system_test.image_over = utils.import_micrograph(
             exp_path + 'tims_data_10um(' + str(item - num_train) + ')', img_size)
+        system_test.image_in = (system_test.image_under + system_test.image_over) / 2
     else:
         system_test.generate_images(n_images)
         if simulation_parameters['Misalignment'][0]:

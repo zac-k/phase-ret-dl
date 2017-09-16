@@ -2193,12 +2193,13 @@ class PhaseImagingSystem(object):
     def _add_noise(self, image):
         for i in range(len(image)):
             for j in range(len(image[0])):
-                image[i, j] = np.random.poisson(image[i, j] /
-                                  (self.noise_level *
-                                   self.noise_level *
-                                   self.image_intensity)) * (self.noise_level *
-                                                             self.noise_level *
-                                                             self.image_intensity)
+                if image[i, j] >= 0:
+                    image[i, j] = np.random.poisson(image[i, j] /
+                                      (self.noise_level *
+                                       self.noise_level *
+                                       self.image_intensity)) * (self.noise_level *
+                                                                 self.noise_level *
+                                                                 self.image_intensity)
 
     def _construct_inverse_k_squared_kernel(self):
 
