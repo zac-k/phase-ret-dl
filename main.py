@@ -90,6 +90,7 @@ def flatten_layer(layer):
     return layer_flat, num_features
 
 
+
 np.set_printoptions(threshold=np.inf)
 f = open('./data/figures/errors.txt', 'w')
 
@@ -98,8 +99,9 @@ f = open('./data/figures/errors.txt', 'w')
 hyperparameters = {'Hidden Layer Size': 50000,
                    'Number of Hidden Layers': 1,
                    'Input Type': 'images',
-                   'Number of Images': 2,
-                   'Train/Valid/Test Split': [2000, 0, 1],
+                   'Number of Images': 3,
+                   'Train with In-focus Image': True,
+                   'Train/Valid/Test Split': [5000, 0, 100],
                    'Batch Size': 50,
                    'Optimiser Type': 'gradient descent',
                    'Learning Rate': 0.5,
@@ -108,8 +110,8 @@ hyperparameters = {'Hidden Layer Size': 50000,
 simulation_parameters = {'Pre-remove Offset': False,
                          'Misalignment': [True, True, True],  # rotation, scale, translation
                          'Rotation/Scale/Shift': [3, 0.02, 0.01],  # Rotation is in degrees
-                         'Load Model': False,  # True is not implemented yet
-                         'Experimental Test Data': True}
+                         'Load Model': False,
+                         'Experimental Test Data': False}
 imaging_parameters = {'Window Function Radius': 0.5,
                       'Accelerating Voltage': 300,  # electron accelerating voltage in keV
                       'Use Multislice': False,
@@ -117,13 +119,13 @@ imaging_parameters = {'Window Function Radius': 0.5,
                       'Multislice Wavefield Path': 'D:/code/images/multislice/',
                       'Image Size in Pixels': 64,
                       'Multislice Resolution in Pixels': 1024,
-                      'Domain Size': 510.76e-9,  # Width of images in metres
-                      'Noise Level': 0.02,
-                      'Defocus': 8e-6,
+                      'Domain Size': 255e-9,  # Width of images in metres
+                      'Noise Level': 0.01,
+                      'Defocus': 10e-6,
                       'Error Limits': [-12, 12],
                       'Phase Limits': [-12, 12],
                       'Image Limits': [0, 2]}
-specimen_parameters = {'Mean Inner Potential': -17 - 0.1j}
+specimen_parameters = {'Mean Inner Potential': -17 - 0.8j}
 exp_path = './data/images/experimental/'
 
 n_savefile_sets = hyperparameters['Train/Valid/Test Split']
@@ -172,72 +174,73 @@ specimen_name = 'particle'
 for i in range(num_train + num_test):
     specimen_files.append(specimen_path + specimen_name + '(' + str(i) + ')' + specimen_ext)
 
-# Compute retrieved training phases and flatten training data
-print('Generating training data...')
-train_generate_bar = pyprind.ProgBar(num_train, stream=sys.stdout)
-for item in range(num_train):
-    train_generate_bar.update()
-    specimen_file = specimen_files[np.random.randint(len(specimen_files))]
-    system_train = phase.PhaseImagingSystem(
-           image_size=img_size,
-           defocus=imaging_parameters['Defocus'],
-           image_width=imaging_parameters['Domain Size'],
-           energy=imaging_parameters['Accelerating Voltage']*1e3,
-           specimen_file=specimen_files[item],
-           mip=mip,
-           is_attenuating=True,
-           noise_level=noise_level,
-           use_multislice=use_multislice,
-           multislice_method=imaging_parameters['Multislice Method'],
-           M=M,
-           item=item,
-           path=imaging_parameters['Multislice Wavefield Path'])
-    system_train.generate_images(n_images)
-    if simulation_parameters['Misalignment'][0]:
-        system_train.rotate_images(std=simulation_parameters['Rotation/Scale/Shift'][0])
-    if simulation_parameters['Misalignment'][1]:
-        system_train.scale_images(simulation_parameters['Rotation/Scale/Shift'][1])
-    if simulation_parameters['Misalignment'][2]:
-        system_train.shift_images(std=img_size*simulation_parameters['Rotation/Scale/Shift'][2])
-    system_train.add_noise_to_micrographs()
-    system_train.apodise_images(imaging_parameters['Window Function Radius'])
-    system_train.retrieve_phase()
-    if simulation_parameters['Pre-remove Offset']:
-        system_train.remove_offset()
+if not simulation_parameters['Load Model']:
+    # Compute retrieved training phases and flatten training data
+    print('Generating training data...')
+    train_generate_bar = pyprind.ProgBar(num_train, stream=sys.stdout)
+    for item in range(num_train):
+        train_generate_bar.update()
+        specimen_file = specimen_files[np.random.randint(len(specimen_files))]
+        system_train = phase.PhaseImagingSystem(
+               image_size=img_size,
+               defocus=imaging_parameters['Defocus'],
+               image_width=imaging_parameters['Domain Size'],
+               energy=imaging_parameters['Accelerating Voltage']*1e3,
+               specimen_file=specimen_files[item],
+               mip=mip,
+               is_attenuating=True,
+               noise_level=noise_level,
+               use_multislice=use_multislice,
+               multislice_method=imaging_parameters['Multislice Method'],
+               M=M,
+               item=item,
+               path=imaging_parameters['Multislice Wavefield Path'])
+        system_train.generate_images(n_images)
+        if simulation_parameters['Misalignment'][0]:
+            system_train.rotate_images(std=simulation_parameters['Rotation/Scale/Shift'][0])
+        if simulation_parameters['Misalignment'][1]:
+            system_train.scale_images(simulation_parameters['Rotation/Scale/Shift'][1])
+        if simulation_parameters['Misalignment'][2]:
+            system_train.shift_images(std=img_size*simulation_parameters['Rotation/Scale/Shift'][2])
+        system_train.add_noise_to_micrographs()
+        system_train.apodise_images(imaging_parameters['Window Function Radius'])
+        system_train.retrieve_phase()
+        if simulation_parameters['Pre-remove Offset']:
+            system_train.remove_offset()
 
 
-    system_train.apodise_phases(imaging_parameters['Window Function Radius'])
-    phase_exact_flat_train.append(system_train.phase_exact.real.reshape(img_size_flat))
-    phase_retrieved_flat_train.append(system_train.phase_retrieved.real.reshape(img_size_flat))
+        system_train.apodise_phases(imaging_parameters['Window Function Radius'])
+        phase_exact_flat_train.append(system_train.phase_exact.real.reshape(img_size_flat))
+        phase_retrieved_flat_train.append(system_train.phase_retrieved.real.reshape(img_size_flat))
 
-    if item < n_savefile_sets[0]:
-        plot.save_image(system_train.image_under,
-                        './data/figures/image_train_under_' + str(item) + '.png',
-                    imaging_parameters['Image Limits'])
-        plot.save_image(system_train.image_in,
-                        './data/figures/image_train_in_' + str(item) + '.png',
-                    imaging_parameters['Image Limits'])
-        plot.save_image(system_train.image_over,
-                        './data/figures/image_train_over_' + str(item) + '.png',
-                    imaging_parameters['Image Limits'])
+        if item < n_savefile_sets[0]:
+            plot.save_image(system_train.image_under,
+                            './data/figures/image_train_under_' + str(item) + '.png',
+                        imaging_parameters['Image Limits'])
+            plot.save_image(system_train.image_in,
+                            './data/figures/image_train_in_' + str(item) + '.png',
+                        imaging_parameters['Image Limits'])
+            plot.save_image(system_train.image_over,
+                            './data/figures/image_train_over_' + str(item) + '.png',
+                        imaging_parameters['Image Limits'])
 
-    if input_type == 'images':
-        if n_images == 3:
-            image_flat_train.append(np.concatenate((system_train.image_under.real.reshape(img_size_flat),
-                                    system_train.image_in.real.reshape(img_size_flat),
-                                    system_train.image_over.real.reshape(img_size_flat))))
-        elif n_images == 2:
-            image_flat_train.append(np.concatenate((system_train.image_under.real.reshape(img_size_flat),
-                                    system_train.image_over.real.reshape(img_size_flat))))
-
-
+        if input_type == 'images':
+            if n_images == 3 or hyperparameters['Train with In-focus Image']:
+                image_flat_train.append(np.concatenate((system_train.image_under.real.reshape(img_size_flat),
+                                        system_train.image_in.real.reshape(img_size_flat),
+                                        system_train.image_over.real.reshape(img_size_flat))))
+            elif n_images == 2:
+                image_flat_train.append(np.concatenate((system_train.image_under.real.reshape(img_size_flat),
+                                        system_train.image_over.real.reshape(img_size_flat))))
 
 
-# Define average error in training set, calculate it, and print output.
-if input_type == 'phases':
-    error_train_ave = utils.average_normalised_rms_error_flat(phase_exact_flat_train, phase_retrieved_flat_train)
-    print("Average accuracy on ", "training", "-set: {0: .1%}".format(error_train_ave), sep='')
-    f.write("Average accuracy on training-set: {0: .1%}".format(error_train_ave) + '\n')
+
+
+    # Define average error in training set, calculate it, and print output.
+    if input_type == 'phases':
+        error_train_ave = utils.average_normalised_rms_error_flat(phase_exact_flat_train, phase_retrieved_flat_train)
+        print("Average accuracy on ", "training", "-set: {0: .1%}".format(error_train_ave), sep='')
+        f.write("Average accuracy on training-set: {0: .1%}".format(error_train_ave) + '\n')
 
 
 # Create arrays to hold flattened test data
@@ -297,7 +300,7 @@ for item in range(num_train, num_test + num_train):
                         './data/figures/image_test_over_' + str(item - num_train) + '.png',
                     imaging_parameters['Image Limits'])
     if input_type == 'images':
-        if n_images == 3:
+        if n_images == 3 or hyperparameters['Train with In-focus Image']:
             image_flat_test.append(np.concatenate((system_test.image_under.real.reshape(img_size_flat),
                                    system_test.image_in.real.reshape(img_size_flat),
                                    system_test.image_over.real.reshape(img_size_flat))))
@@ -316,8 +319,13 @@ if len(phase_exact_flat_test) > 0 and not simulation_parameters['Experimental Te
 
 # Determine number of nodes in input layer
 if input_type == 'images':
-    input_size = n_images * img_size_flat
-    num_channels = n_images
+    if hyperparameters['Train with In-focus Image']:
+        n_training_images = 3
+    else:
+        n_training_images = n_images
+
+    input_size = n_training_images * img_size_flat
+    num_channels = n_training_images
 elif input_type == 'phases':
     input_size = img_size_flat
     num_channels = 1
@@ -390,9 +398,8 @@ elif optimiser_type == 'gradient descent':
 else:
     raise ValueError('Unknown optimizer type')
 
-# Initialise variables
 session = tf.Session()
-session.run(tf.global_variables_initializer())
+saver = tf.train.Saver()
 
 # Define feed dict for test set
 if input_type == 'images':
@@ -403,33 +410,41 @@ elif input_type == 'phases':
     feed_dict_test = {x: phase_retrieved_flat_test,
                       y_true: phase_exact_flat_test
                       }
+if simulation_parameters['Load Model']:
+    saver.restore(session, './data/figures/model')
 
-# Set batch variables
-batch_size = hyperparameters['Batch Size']  # Number of training examples in each batch
-num_batches = int(np.floor(num_train / batch_size))  # Calculate number of batches
-
-# Calculate the mean of the training data for later use
-mean_exact_train = np.mean(phase_exact_flat_train, axis=0)
+else:
+    # Initialise variables
+    session.run(tf.global_variables_initializer())
 
 
-# Train the model
-print('Training...')
 
-num_epochs = hyperparameters['Number of Epochs']
-train_bar = pyprind.ProgBar(num_epochs * num_batches, stream=sys.stdout)
-for q in range(num_epochs):
-    for i in range(num_batches):
-        train_bar.update()
-        if (i + 1) * batch_size < num_train:
-            if input_type == 'images':
-                x_batch = image_flat_train[i * batch_size: (i + 1) * batch_size]
-            elif input_type == 'phases':
-                x_batch = phase_retrieved_flat_train[i * batch_size: (i + 1) * batch_size]
-            y_true_batch = phase_exact_flat_train[i * batch_size: (i + 1) * batch_size]
-            feed_dict_train = {x: x_batch,
-                               y_true: y_true_batch}
+    # Set batch variables
+    batch_size = hyperparameters['Batch Size']  # Number of training examples in each batch
+    num_batches = int(np.floor(num_train / batch_size))  # Calculate number of batches
 
-            session.run(optimizer, feed_dict=feed_dict_train)
+    # Calculate the mean of the training data for later use
+    mean_exact_train = np.mean(phase_exact_flat_train, axis=0)
+
+
+    # Train the model
+    print('Training...')
+
+    num_epochs = hyperparameters['Number of Epochs']
+    train_bar = pyprind.ProgBar(num_epochs * num_batches, stream=sys.stdout)
+    for q in range(num_epochs):
+        for i in range(num_batches):
+            train_bar.update()
+            if (i + 1) * batch_size < num_train:
+                if input_type == 'images':
+                    x_batch = image_flat_train[i * batch_size: (i + 1) * batch_size]
+                elif input_type == 'phases':
+                    x_batch = phase_retrieved_flat_train[i * batch_size: (i + 1) * batch_size]
+                y_true_batch = phase_exact_flat_train[i * batch_size: (i + 1) * batch_size]
+                feed_dict_train = {x: x_batch,
+                                   y_true: y_true_batch}
+
+                session.run(optimizer, feed_dict=feed_dict_train)
 
 
 
@@ -447,27 +462,29 @@ output_images = session.run(output, feed_dict=feed_dict_test)
 
 # Calculate average rms error between test outputs and the mean of the
 # training target images (exact phases) and print it
-error_test_vs_train = 0
-for output_image in output_images:
-    error_test_vs_train += np.sqrt(
-                        np.sum(np.square(mean_exact_train -
-                                         output_image)) / np.sum(np.square(mean_exact_train))
+if not simulation_parameters['Load Model']:
+    error_test_vs_train = 0
+    for output_image in output_images:
+        error_test_vs_train += np.sqrt(
+                            np.sum(np.square(mean_exact_train -
+                                             output_image)) / np.sum(np.square(mean_exact_train))
                 )
-error_test_vs_train /= num_test
+    error_test_vs_train /= num_test
 if not simulation_parameters['Experimental Test Data']:
-    print("Accuracy on ", "test input", " compared to training output: {0: .1%}".format(error_test_vs_train), sep='')
-    f.write("Accuracy on test input compared to training output: {0: .1%}".format(error_test_vs_train) + '\n')
+    #print("Accuracy on ", "test input", " compared to training output: {0: .1%}".format(error_test_vs_train), sep='')
+    #f.write("Accuracy on test input compared to training output: {0: .1%}".format(error_test_vs_train) + '\n')
 
     error_ret = (np.array(phase_retrieved_flat_test) - np.array(phase_exact_flat_test)).tolist()
     error_adj = (np.array(output_images) - np.array(phase_exact_flat_test)).tolist()
 
-for i in range(n_savefile_sets[0]):
-    plot.save_image(np.reshape(phase_exact_flat_train[i], img_shape),
-                    './data/figures/phase_exact_train_' + str(i) + '.png',
-                    imaging_parameters['Phase Limits'])
-    plot.save_image(np.reshape(phase_retrieved_flat_train[i], img_shape),
-                    './data/figures/phase_retrieved_train_' + str(i) + '.png',
-                    imaging_parameters['Phase Limits'])
+if not simulation_parameters['Load Model']:
+    for i in range(n_savefile_sets[0]):
+        plot.save_image(np.reshape(phase_exact_flat_train[i], img_shape),
+                        './data/figures/phase_exact_train_' + str(i) + '.png',
+                        imaging_parameters['Phase Limits'])
+        plot.save_image(np.reshape(phase_retrieved_flat_train[i], img_shape),
+                        './data/figures/phase_retrieved_train_' + str(i) + '.png',
+                        imaging_parameters['Phase Limits'])
 
 for i in range(n_savefile_sets[2]):
     if not simulation_parameters['Experimental Test Data']:
@@ -501,15 +518,16 @@ if not simulation_parameters['Experimental Test Data']:
     for i, output_image in enumerate(output_images):
         f.write("Accuracy on test input " + str(i) + "(adjusted): {0: .1%}".format(acc[i]) + '\n')
 
-for i in range(num_train):
-    error_train = utils.normalised_rms_error(phase_exact_flat_train[i], phase_retrieved_flat_train[i])
-    f.write("Accuracy on training input " + str(i) + ": {0: .1%}".format(error_train) + '\n')
+if not simulation_parameters['Load Model']:
+    for i in range(num_train):
+        error_train = utils.normalised_rms_error(phase_exact_flat_train[i], phase_retrieved_flat_train[i])
+        f.write("Accuracy on training input " + str(i) + ": {0: .1%}".format(error_train) + '\n')
 
 f.close()
 
 # Save trained model
-saver = tf.train.Saver()
-saver.save(session, './data/figures/model')
+if not simulation_parameters['Load Model']:
+    saver.save(session, './data/figures/model')
 
 #utils.beep()  # Alert user that script has finished
 show()  # Prevent plt.show(block=False) from closing plot window

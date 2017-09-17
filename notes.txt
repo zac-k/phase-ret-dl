@@ -1,6 +1,11 @@
-* More images per batch = better feature recognition
-* More batches = better reduction in noise and more accurate phase amplitude
+# More images per batch -> better feature recognition
+# More batches -> better reduction in noise and more accurate phase amplitude
 
 
-* Use a learning rate of approximately 1e-4 for AdamOptimizer, or 0.5 for
+# Use a learning rate of approximately 1e-4 for AdamOptimizer, or 0.5 for
 GradienDescentOptimizer
+
+# Using three images as input data increases edge contrast relative to using two.
+# This may simply be a result of the additional connections between the input and
+# first hidden layer. Test this theory by using two images, but increasing the
+# number of neurons in the hidden layer by 50%.
