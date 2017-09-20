@@ -13,6 +13,11 @@ import pandas as pd
 
 
 def new_weights(shape, init_type):
+    assert init_type == 'random' or \
+           init_type == 'identity' or \
+           init_type == 'randomised identity' or \
+           init_type == 'ones' or \
+           init_type == 'zeros'
     if init_type == 'random':
         return tf.Variable(tf.truncated_normal(shape, stddev=0.05))
     elif init_type == 'identity':
@@ -21,13 +26,20 @@ def new_weights(shape, init_type):
         return tf.Variable(tf.eye(shape[0], num_columns=shape[1]) + tf.truncated_normal(shape, stddev=0.05))
     elif init_type == 'ones':
         return tf.Variable(tf.ones(shape))
+    elif init_type == 'zeros':
+        return tf.Variable(tf.zeros(shape))
 
 
 def new_biases(length, init_type):
-    if init_type == 'random' or init_type == 'randomised identity':
-        return tf.Variable(tf.constant(0.05, shape=[length]))
-    else:
-        return tf.Variable(tf.zeros([length]))
+    assert init_type == 'random' or \
+           init_type == 'identity' or \
+           init_type == 'randomised identity' or \
+           init_type == 'ones' or \
+           init_type == 'zeros'
+    # if init_type == 'random' or init_type == 'randomised identity':
+    #     return tf.Variable(tf.constant(0.05, shape=[length]))
+    # else:
+    return tf.Variable(tf.zeros([length]))
 
 
 def new_fc_layer(in_vector,         # The previous Layer
@@ -95,18 +107,24 @@ np.set_printoptions(threshold=np.inf)
 f = open('./data/figures/errors.txt', 'w')
 
 # Create dict of hyperparameter values, each of which will be assigned to the appropriate
-# variable closer to where they are used.
-hyperparameters = {'Hidden Layer Size': 50000,
+# variable closer to where they are used. Number of images is the actual number of simulated
+# micrographs. If number of images == 2, 'Train with In-focus Image' uses the approximated
+# image for training, and processing the test images, otherwise they are only used for
+# the TIE.
+hyperparameters = {'Hidden Layer Size': 100000,
                    'Number of Hidden Layers': 1,
                    'Input Type': 'images',
                    'Number of Images': 3,
-                   'Train with In-focus Image': True,
-                   'Train/Valid/Test Split': [5000, 0, 100],
+                   'Train with In-focus Image': False,
+                   'Train/Valid/Test Split': [500, 0, 1],
                    'Batch Size': 50,
                    'Optimiser Type': 'gradient descent',
                    'Learning Rate': 0.5,
                    'Use Convolutional Layers': False,
-                   'Number of Epochs': 50}
+                   'Number of Epochs': 50,
+                   'Initialisation Type': 'identity'}
+# 'Pre-remove Offest' removes the mean difference between the exact and retrieved phases for both
+# the training and test sets. Will not work with experimental images.
 simulation_parameters = {'Pre-remove Offset': False,
                          'Misalignment': [True, True, True],  # rotation, scale, translation
                          'Rotation/Scale/Shift': [3, 0.02, 0.01],  # Rotation is in degrees
@@ -125,12 +143,15 @@ imaging_parameters = {'Window Function Radius': 0.5,
                       'Error Limits': [-12, 12],
                       'Phase Limits': [-12, 12],
                       'Image Limits': [0, 2]}
+
 specimen_parameters = {'Mean Inner Potential': -17 - 0.8j}
 exp_path = './data/images/experimental/'
 
 n_savefile_sets = hyperparameters['Train/Valid/Test Split']
 utils.write_dict(f, hyperparameters)
+utils.write_dict(f, simulation_parameters)
 utils.write_dict(f, imaging_parameters)
+utils.write_dict(f, specimen_parameters)
 
 # Set image size and shape
 img_size = imaging_parameters['Image Size in Pixels']
@@ -369,7 +390,7 @@ for i in range(num_hidden_layers):
                                     hidden_input_size,
                                     hidden_layer_size,
                                     activation_function=tf.nn.tanh,
-                                    init_type='identity')
+                                    init_type=hyperparameters['Initialisation Type'])
 
 if num_hidden_layers == 0:
     penultimate_layer = input_for_first_fc_layer
@@ -382,7 +403,7 @@ output = new_fc_layer(penultimate_layer,
                       penultimate_layer_size,
                       img_size_flat,
                       activation_function=None,
-                      init_type='identity'
+                      init_type=hyperparameters['Initialisation Type']
                       )
 
 # Define cost function

@@ -1,11 +1,24 @@
 # More images per batch -> better feature recognition
 # More batches -> better reduction in noise and more accurate phase amplitude
+# The above comments assume the total size of the training set is constant, and
+# these observations have not been tested over a wide range of conditions.
+
+# Too few connections in the network also results in loss of contrast. 50000 neurons
+# in the hidden layer seems sufficient for 64x64 images (in imaging mode) when using three
+# defoci. The same number of neurons results in a blurry image when using only under- and
+# over-focus images. Using the two image method with 75000 neurons (an increase of 50%) to
+# keep the total number of connections the same did not improve the contrast. Tried
+# an increase of 50% in training data, hidden neurons, and batch size (with the same number of
+# batches, simulataneously. This improved edge contrast, but not significantly. Now trying
+# 100000 hidden neurons, with 9000 training sets.
+
+# Three image method fails to converge for large domain width (relative to defocus?) of 255nm
+#(10um defocus). This may be easy to fix using different initialisations. The current
+# initial weights and biases are designed for using the 'phases' input type.
+
+
 
 
 # Use a learning rate of approximately 1e-4 for AdamOptimizer, or 0.5 for
 GradienDescentOptimizer
 
-# Using three images as input data increases edge contrast relative to using two.
-# This may simply be a result of the additional connections between the input and
-# first hidden layer. Test this theory by using two images, but increasing the
-# number of neurons in the hidden layer by 50%.
