@@ -111,12 +111,11 @@ f = open('./data/figures/errors.txt', 'w')
 # micrographs. If number of images == 2, 'Train with In-focus Image' uses the approximated
 # image for training, and processing the test images, otherwise they are only used for
 # the TIE.
-hyperparameters = {'Hidden Layer Size': 100000,
-                   'Number of Hidden Layers': 1,
+hyperparameters = {'Hidden Layer Size': [5000, 50000],
                    'Input Type': 'images',
-                   'Number of Images': 3,
-                   'Train with In-focus Image': False,
-                   'Train/Valid/Test Split': [500, 0, 1],
+                   'Number of Images': 2,
+                   'Train with In-focus Image': False,  # False has no effect if
+                   'Train/Valid/Test Split': [5, 0, 1],
                    'Batch Size': 50,
                    'Optimiser Type': 'gradient descent',
                    'Learning Rate': 0.5,
@@ -141,10 +140,10 @@ imaging_parameters = {'Window Function Radius': 0.5,
                       'Noise Level': 0.01,
                       'Defocus': 10e-6,
                       'Error Limits': [-12, 12],
-                      'Phase Limits': [-12, 12],
+                      'Phase Limits': [-5, 5],
                       'Image Limits': [0, 2]}
+specimen_parameters = {'Mean Inner Potential': -8 - 0.8j}
 
-specimen_parameters = {'Mean Inner Potential': -17 - 0.8j}
 exp_path = './data/images/experimental/'
 
 n_savefile_sets = hyperparameters['Train/Valid/Test Split']
@@ -375,20 +374,20 @@ else:
 
 
 # Define fully connected layers
-num_hidden_layers = hyperparameters['Number of Hidden Layers']
+num_hidden_layers = len(hyperparameters['Hidden Layer Size'])
 hidden_layers = []
 for i in range(num_hidden_layers):
-    hidden_layers.append(tf.Variable(tf.zeros([hidden_layer_size])))
+    hidden_layers.append(tf.Variable(tf.zeros([hidden_layer_size[i]])))
 for i in range(num_hidden_layers):
     if i == 0:
         hidden_input = input_for_first_fc_layer
         hidden_input_size = num_inputs_for_first_fc_layer
     else:
         hidden_input = hidden_layers[i - 1]
-        hidden_input_size = hidden_layer_size
+        hidden_input_size = hidden_layer_size[i - 1]
     hidden_layers[i] = new_fc_layer(hidden_input,
                                     hidden_input_size,
-                                    hidden_layer_size,
+                                    hidden_layer_size[i],
                                     activation_function=tf.nn.tanh,
                                     init_type=hyperparameters['Initialisation Type'])
 
@@ -397,7 +396,7 @@ if num_hidden_layers == 0:
     penultimate_layer_size = num_inputs_for_first_fc_layer
 else:
     penultimate_layer = hidden_layers[num_hidden_layers - 1]
-    penultimate_layer_size = hidden_layer_size
+    penultimate_layer_size = hidden_layer_size[-1]
 
 output = new_fc_layer(penultimate_layer,
                       penultimate_layer_size,
