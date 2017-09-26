@@ -1,3 +1,7 @@
+# This file contains notes and observations mostly for the author's own benefit.
+# A lot of it is speculation or hasn't been rigorously tested, so no claims made
+# in this document should be interpreted as fact.
+
 # More images per batch -> better feature recognition
 # More batches -> better reduction in noise and more accurate phase amplitude
 # The above comments assume the total size of the training set is constant, and
