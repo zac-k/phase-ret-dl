@@ -111,11 +111,11 @@ f = open('./data/figures/errors.txt', 'w')
 # micrographs. If number of images == 2, 'Train with In-focus Image' uses the approximated
 # image for training, and processing the test images, otherwise they are only used for
 # the TIE.
-hyperparameters = {'Hidden Layer Size': [5000, 50000],
+hyperparameters = {'Hidden Layer Size': [50000],
                    'Input Type': 'images',
                    'Number of Images': 2,
-                   'Train with In-focus Image': False,  # False has no effect if
-                   'Train/Valid/Test Split': [5, 0, 1],
+                   'Train with In-focus Image': False,  # False has no effect if n_images == 3
+                   'Train/Valid/Test Split': [5000, 0, 100],
                    'Batch Size': 50,
                    'Optimiser Type': 'gradient descent',
                    'Learning Rate': 0.5,
@@ -126,7 +126,8 @@ hyperparameters = {'Hidden Layer Size': [5000, 50000],
 # the training and test sets. Will not work with experimental images.
 simulation_parameters = {'Pre-remove Offset': False,
                          'Misalignment': [True, True, True],  # rotation, scale, translation
-                         'Rotation/Scale/Shift': [3, 0.02, 0.01],  # Rotation is in degrees
+                         'Rotation/Scale/Shift': [360, 0.02, 0.01],  # Rotation is in degrees
+                         'Rotation Mode': 'uniform',  # 'uniform' or 'gaussian'
                          'Load Model': False,
                          'Experimental Test Data': False}
 imaging_parameters = {'Window Function Radius': 0.5,
@@ -136,14 +137,15 @@ imaging_parameters = {'Window Function Radius': 0.5,
                       'Multislice Wavefield Path': 'D:/code/images/multislice/',
                       'Image Size in Pixels': 64,
                       'Multislice Resolution in Pixels': 1024,
-                      'Domain Size': 255e-9,  # Width of images in metres
-                      'Noise Level': 0.01,
-                      'Defocus': 10e-6,
-                      'Error Limits': [-12, 12],
-                      'Phase Limits': [-5, 5],
+                      'Domain Size': 150e-9,  # Width of images in metres
+                      'Noise Level': 0.00,
+                      'Defocus': 8e-6,
+                      'Error Limits': [-3, 3],
+                      'Phase Limits': [-3, 3],
                       'Image Limits': [0, 2]}
-specimen_parameters = {'Mean Inner Potential': -8 - 0.8j}
-
+specimen_parameters = {'Mean Inner Potential': -17 - 0.8j}
+assert simulation_parameters['Rotation Mode'] == 'gaussian' or \
+       simulation_parameters['Rotation Mode'] == 'uniform'
 exp_path = './data/images/experimental/'
 
 n_savefile_sets = hyperparameters['Train/Valid/Test Split']
@@ -217,7 +219,8 @@ if not simulation_parameters['Load Model']:
                path=imaging_parameters['Multislice Wavefield Path'])
         system_train.generate_images(n_images)
         if simulation_parameters['Misalignment'][0]:
-            system_train.rotate_images(std=simulation_parameters['Rotation/Scale/Shift'][0])
+            system_train.rotate_images(std=simulation_parameters['Rotation/Scale/Shift'][0],
+                                       mode=simulation_parameters['Rotation Mode'])
         if simulation_parameters['Misalignment'][1]:
             system_train.scale_images(simulation_parameters['Rotation/Scale/Shift'][1])
         if simulation_parameters['Misalignment'][2]:
@@ -295,7 +298,8 @@ for item in range(num_train, num_test + num_train):
     else:
         system_test.generate_images(n_images)
         if simulation_parameters['Misalignment'][0]:
-            system_test.rotate_images(std=simulation_parameters['Rotation/Scale/Shift'][0])
+            system_test.rotate_images(std=simulation_parameters['Rotation/Scale/Shift'][0],
+                                      mode=simulation_parameters['Rotation Mode'])
         if simulation_parameters['Misalignment'][1]:
             system_test.scale_images(std=simulation_parameters['Rotation/Scale/Shift'][1])
         if simulation_parameters['Misalignment'][2]:

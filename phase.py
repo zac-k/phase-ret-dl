@@ -153,8 +153,11 @@ class PhaseImagingSystem(object):
         else:
             out = img
         return out
-    def rotate_images(self, std):
-        angle = np.random.normal(scale=std)
+    def rotate_images(self, std, mode):
+        if mode == 'uniform':
+            angle = np.random.uniform(0, std)
+        elif mode == 'gaussian':
+            angle = np.random.normal(scale=std)
         self.image_under = rotate(input=self.image_under, angle=angle, reshape=False, cval=1.0)
         angle = np.random.normal(scale=std)
         self.image_over = rotate(input=self.image_over, angle=angle, reshape=False, cval=1.0)
