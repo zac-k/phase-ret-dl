@@ -12,7 +12,7 @@ This package contains an artificial neural network (ANN) implemented using tenso
 
 [main.py](https://github.com/zac-k/phase-ret-dl/blob/master/main.py) contains four dicts with values that can be adjusted to alter properties of the image simulation, phase retrieval method, and training and testing of the neural network. The parameters are roughly grouped into meaningful categories (the dicts). An explanation of these is given below.
 
-### hyperparameters:
+### hyperparameters
 
 #### 'Hidden Layer Size'
 This is a list containing the number of neurons per hidden layer. The total number of hidden layers is given by the length of the list. An ANN with one hidden layer is created by setting this parameter to a list with one entry.
@@ -63,11 +63,11 @@ How to initialise the weights and biases. `'identity'` is sufficient for most pu
 
 Boolean. If `True`, removes the mean error from training and test retrieved phases. Used for removing this source of error so that other sources can be studied independently.
 
-#### 'Misalignment': [True, True, True],  # rotation, scale, translation
+#### 'Misalignment'
 
 Three element list of booleans. Tells the ANN whether to use random variations in rotation, scaling, and translation, respectively.
 
-#### 'Rotation/Scale/Shift':
+#### 'Rotation/Scale/Shift'
 
 Three element list containing the standard deviation of variations in rotation (in degrees), scaling, and translation, respectively. If rotation mode is `'uniform'`, the first element here is the range. Scale and shift are selected from a Gaussian distribution.
 
@@ -141,3 +141,5 @@ Two element dict containing the maximum and minimum intensity values for the int
 ### specimen_parameters
 
 #### 'Mean Inner Potential'
+
+Complex float. The real part is the mean inner potential in volts (~-17 for magnetite), and the imaginary part is related to absorption coefficient, and is usually around `1j`.

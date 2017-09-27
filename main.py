@@ -115,7 +115,7 @@ hyperparameters = {'Hidden Layer Size': [50000],
                    'Input Type': 'images',
                    'Number of Images': 2,
                    'Train with In-focus Image': False,  # False has no effect if n_images == 3
-                   'Train/Valid/Test Split': [5000, 0, 100],
+                   'Train/Valid/Test Split': [5, 0, 1],
                    'Batch Size': 50,
                    'Optimiser Type': 'gradient descent',
                    'Learning Rate': 0.5,
@@ -125,7 +125,7 @@ hyperparameters = {'Hidden Layer Size': [50000],
 # 'Pre-remove Offest' removes the mean difference between the exact and retrieved phases for both
 # the training and test sets. Will not work with experimental images.
 simulation_parameters = {'Pre-remove Offset': False,
-                         'Misalignment': [True, True, True],  # rotation, scale, translation
+                         'Misalignment': [False, False, False],  # rotation, scale, translation
                          'Rotation/Scale/Shift': [360, 0.02, 0.01],  # Rotation is in degrees
                          'Rotation Mode': 'uniform',  # 'uniform' or 'gaussian'
                          'Load Model': False,
@@ -143,7 +143,7 @@ imaging_parameters = {'Window Function Radius': 0.5,
                       'Error Limits': [-3, 3],
                       'Phase Limits': [-3, 3],
                       'Image Limits': [0, 2]}
-specimen_parameters = {'Mean Inner Potential': -17 - 0.8j}
+specimen_parameters = {'Mean Inner Potential': -17 + 0.8j}
 assert simulation_parameters['Rotation Mode'] == 'gaussian' or \
        simulation_parameters['Rotation Mode'] == 'uniform'
 exp_path = './data/images/experimental/'

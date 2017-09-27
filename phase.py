@@ -2325,7 +2325,7 @@ class PhaseImagingSystem(object):
         if self.use_multislice:
             wavefunction = self.wave_multislice_hr
         else:
-            wavefunction = np.exp(-1j * self.phase_exact)
+            wavefunction = np.exp(1j * self.phase_exact)
 
 
         self._set_transfer_function(defocus=defocus)
@@ -2392,7 +2392,7 @@ class PhaseImagingSystem(object):
         return image
 
     def intensity_derivative(self):
-        return (self.image_under - self.image_over) / (2 * self.defocus)
+        return (self.image_over - self.image_under) / (2 * self.defocus)
 
     @staticmethod
     def regularise_and_invert(kernel, reg):
