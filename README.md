@@ -9,22 +9,22 @@ This project uses supervised learning to train a neural network on simulated ele
 
 # Table of contents
 
-*[Introduction](#introduction)
-*[Parameters](#parameters)
-    *[Hyperparameters](#hyperparameters)
-    *[Imaging parameters](#imaging_parameters)
-    *[Specimen parameters](#specimen_parameters)
-    *[Paths](#paths)
+* [Introduction](#introduction)
+* [Parameters](#parameters)
+    * [Hyperparameters](#hyperparameters)
+    * [Imaging parameters](#imaging_parameters)
+    * [Specimen parameters](#specimen_parameters)
+    * [Paths](#paths)
 
 
 
-#Introduction
+# Introduction
 This package contains an artificial neural network (ANN) implemented using tensorflow 1.2.1, and a phase imaging system class, which simulates out-of-focus images using the projection approximation, and retrieves the phase using a FFT solution to the transport-of-intensity equation.
 
 The process begins by simulating two out-of-focus images (and one in-focus, if set)
 The ANN has input and output layers of size m^2, where m is the width of each image in pixels. These imag
 
-#Parameters
+# Parameters
 
 [main.py](https://github.com/zac-k/phase-ret-dl/blob/master/main.py) contains four dicts with values that can be adjusted to alter properties of the image simulation, phase retrieval method, and training and testing of the neural network. The parameters are roughly grouped into meaningful categories (the dicts). Many of the parameters are subsequently referenced by shorter named variables for brevity. An explanation of these is given below.
 
