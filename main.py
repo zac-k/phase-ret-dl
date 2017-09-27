@@ -113,21 +113,21 @@ np.set_printoptions(threshold=np.inf)
 # the TIE.
 hyperparameters = {'Hidden Layer Size': [50000],
                    'Input Type': 'images',
-                   'Number of Images': 2,
+                   'Number of Images': 3,
                    'Train with In-focus Image': False,  # False has no effect if n_images == 3
-                   'Train/Valid/Test Split': [5, 0, 1],
+                   'Train/Valid/Test Split': [5000, 0, 100],
                    'Batch Size': 50,
                    'Optimiser Type': 'gradient descent',
                    'Learning Rate': 0.5,
                    'Use Convolutional Layers': False,
                    'Number of Epochs': 50,
-                   'Initialisation Type': 'identity'}
+                   'Initialisation Type': 'zeros'}
 # 'Pre-remove Offest' removes the mean difference between the exact and retrieved phases for both
 # the training and test sets. Will not work with experimental images.
 simulation_parameters = {'Pre-remove Offset': False,
-                         'Misalignment': [False, False, False],  # rotation, scale, translation
-                         'Rotation/Scale/Shift': [360, 0.02, 0.01],  # Rotation is in degrees
-                         'Rotation Mode': 'uniform',  # 'uniform' or 'gaussian'
+                         'Misalignment': [True, False, False],  # rotation, scale, translation
+                         'Rotation/Scale/Shift': [1, 0.02, 0.01],  # Rotation is in degrees
+                         'Rotation Mode': 'gaussian',  # 'uniform' or 'gaussian'
                          'Load Model': False,
                          'Experimental Test Data': False}
 imaging_parameters = {'Window Function Radius': 0.5,
@@ -139,11 +139,11 @@ imaging_parameters = {'Window Function Radius': 0.5,
                       'Multislice Resolution in Pixels': 1024,
                       'Domain Size': 150e-9,  # Width of images in metres
                       'Noise Level': 0.00,
-                      'Defocus': 8e-6,
+                      'Defocus': 10e-6,
                       'Error Limits': [-3, 3],
                       'Phase Limits': [-3, 3],
                       'Image Limits': [0, 2]}
-specimen_parameters = {'Mean Inner Potential': -17 + 0.8j}
+specimen_parameters = {'Mean Inner Potential': -17 + 1j}
 paths = {'Experimental Data Path': './data/images/experimental/',
          'Image Output Path': './data/figures/',
          'Phase Output Path': './data/figures/',
@@ -151,6 +151,8 @@ paths = {'Experimental Data Path': './data/images/experimental/',
          'Load Model Path': './data/figures/',
          'Save Model Path': './data/figures/',
          'Specimen Input Path': './data/specimens/training4/'}
+
+
 assert simulation_parameters['Rotation Mode'] == 'gaussian' or \
        simulation_parameters['Rotation Mode'] == 'uniform'
 
@@ -434,6 +436,22 @@ if optimiser_type == 'adam':
     optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(cost)
 elif optimiser_type == 'gradient descent':
     optimizer = tf.train.GradientDescentOptimizer(learning_rate=learning_rate).minimize(cost)
+elif optimiser_type == 'adagrad':
+    optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(cost)
+elif optimiser_type == 'adadelta':
+    optimizer = tf.train.AdadeltaOptimizer(learning_rate=learning_rate).minimize(cost)
+elif optimiser_type == 'adagrad da':
+    optimizer = tf.train.AdagradDAOptimizer(learning_rate=learning_rate).minimize(cost)
+elif optimiser_type == 'momentum':
+    optimizer = tf.train.MomentumOptimizer(learning_rate=learning_rate).minimize(cost)
+elif optimiser_type == 'ftrl':
+    optimizer = tf.train.FtrlOptimizer(learning_rate=learning_rate).minimize(cost)
+elif optimiser_type == 'proximal gradient descent':
+    optimizer = tf.train.ProximalGradientDescentOptimizer(learning_rate=learning_rate).minimize(cost)
+elif optimiser_type == 'proximal adagrad':
+    optimizer = tf.train.ProximalAdagradOptimizer(learning_rate=learning_rate).minimize(cost)
+elif optimiser_type == 'rms prop':
+    optimizer = tf.train.RMSPropOptimizer(learning_rate=learning_rate).minimize(cost)
 else:
     raise ValueError('Unknown optimizer type')
 

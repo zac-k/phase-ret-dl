@@ -21,8 +21,11 @@ This project uses supervised learning to train a neural network on simulated ele
 # Introduction
 This package contains an artificial neural network (ANN) implemented using tensorflow 1.2.1, and a phase imaging system class, which simulates out-of-focus images using the projection approximation, and retrieves the phase using a FFT solution to the transport-of-intensity equation.
 
-The process begins by simulating two out-of-focus images (and one in-focus, if set)
-The ANN has input and output layers of size m^2, where m is the width of each image in pixels. These imag
+The process begins by simulating two out-of-focus images (and one in-focus, if set) using the projected potential of a specimen that is read from file. Sources of error, such as shot noise and image misalignment, can also be added. These images can then be used to in a phase retrieval algorithm. This project uses the transport-of-intensity equation (TIE), but additional methods (such as the Gerchberg-Saxton algorithm) will probably be added in the future.
+
+The ANN has input layer of size n_images*m^2---where m is the width of each image in pixels, and n_images is one for the phase input method, and two or three for the image input method---and the output layer is size m^2. The images (or phase) are flattened and joined end-to-end to form the input vector. The projected potential is scaled to form an 'exact phase', which is also flattened, and is used as the output vector for training the ANN.
+
+One input and one output vector constitutes one training pair. A large number of these pairs are generated, and the ANN is trained on these pairs in batches. After training, the ANN can be used to process a test set of input images or phases (depending on which was used in the training). If simulated images are used for the test set, root-mean-square (rms) errors are computed for each output by comparing it with the exact phase. Average rms errors are calculated for the entire set. 
 
 # Parameters
 
@@ -55,7 +58,7 @@ Number of training examples to use in each training batch.
 
 ### 'Optimiser Type'
 
-Method to use in optimising the ANN. `'gradient descent'` and `'adam'` are currently supported. Tensorflow supports many more optimisers, and these are trivial to implement in this code if desired.
+Method to use in optimising the ANN. Valid values are `'gradient descent'`, `'adam'`, `'adadelta'`, `'adagrad'`, `'adagrad da'`, `'momentum'`, `'ftrl'`, `'proximal gradient descent'`, `'proximal adagrad'`, and `'rms prop'`.
 
 ### 'Learning Rate'
 
