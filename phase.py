@@ -2344,8 +2344,8 @@ class PhaseImagingSystem(object):
         Compute images at under-, in-, and over-focus
         :return:
         """
-        self.image_over = self._transfer_image(defocus=-self.defocus)
-        self.image_under = self._transfer_image(defocus=self.defocus)
+        self.image_over = self._transfer_image(defocus=self.defocus)
+        self.image_under = self._transfer_image(defocus=-self.defocus)
         if n_images == 3:
             self.image_in = self._transfer_image(defocus=0)
         else:
@@ -2392,7 +2392,7 @@ class PhaseImagingSystem(object):
         return image
 
     def intensity_derivative(self):
-        return (self.image_over - self.image_under) / (2 * self.defocus)
+        return (self.image_under - self.image_over) / (2 * self.defocus)
 
     @staticmethod
     def regularise_and_invert(kernel, reg):
