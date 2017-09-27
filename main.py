@@ -104,7 +104,7 @@ def flatten_layer(layer):
 
 
 np.set_printoptions(threshold=np.inf)
-f = open(error_output_path + 'errors.txt', 'w')
+
 
 # Create dict of hyperparameter values, each of which will be assigned to the appropriate
 # variable closer to where they are used. Number of images is the actual number of simulated
@@ -154,12 +154,14 @@ paths = {'Experimental Data Path': './data/images/experimental/',
 assert simulation_parameters['Rotation Mode'] == 'gaussian' or \
        simulation_parameters['Rotation Mode'] == 'uniform'
 
+
 exp_path = paths['Experimental Data Path']
 image_output_path = paths['Image Output Path']
 phase_output_path = paths['Phase Output Path']
 error_output_path = paths['Error Output Path']
 load_model_path = paths['Load Model Path']
 save_model_path = paths['Save Model Path']
+f = open(error_output_path + 'errors.txt', 'w')
 
 n_savefile_sets = hyperparameters['Train/Valid/Test Split']
 utils.write_dict(f, hyperparameters)

@@ -11,10 +11,10 @@ This project uses supervised learning to train a neural network on simulated ele
 
 * [Introduction](#introduction)
 * [Parameters](#parameters)
- *[Hyperparameters](#hyperparameters)
- *[Imaging parameters](#imaging-parameters)
- *[Specimen parameters](#specimen-parameters)
- *[Paths](#paths)
+    *[Hyperparameters](#hyperparameters)
+    *[Imaging parameters](#imaging-parameters)
+    *[Specimen parameters](#specimen-parameters)
+    *[Paths](#paths)
 
 
 
