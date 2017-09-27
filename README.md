@@ -10,16 +10,22 @@ This project uses supervised learning to train a neural network on simulated ele
 ## Table of contents
 
 * [Introduction](#introduction)
+* [Parameters](#parameters)
+    *[Hyperparameters](#hyperparameters)
+    *[Imaging parameters](#imaging-parameters)
+    *[Specimen parameters](#specimen-parameters)
+    *[Paths](#paths)
+
 
 
 ## <a name="introduction"></a>Introduction
 This package contains an artificial neural network (ANN) implemented using tensorflow 1.2.1.
 
-## Parameters
+## <a name="parameters"></a>Parameters
 
 [main.py](https://github.com/zac-k/phase-ret-dl/blob/master/main.py) contains four dicts with values that can be adjusted to alter properties of the image simulation, phase retrieval method, and training and testing of the neural network. The parameters are roughly grouped into meaningful categories (the dicts). Many of the parameters are subsequently referenced by shorter named variables for brevity. An explanation of these is given below.
 
-### hyperparameters
+### <a name="hyperparameters"></a>hyperparameters
 
 #### 'Hidden Layer Size'
 This is a list containing the number of neurons per hidden layer. The total number of hidden layers is given by the length of the list. An ANN with one hidden layer is created by setting this parameter to a list with one entry.
@@ -64,7 +70,7 @@ Number of epochs the training will run for.
 
 How to initialise the weights and biases. `'identity'` is sufficient for most purposes in the present context. Other options are 'random'`, `'randomised identity'`, `'ones'`, and `'zeros'`.
 
-### simulation_parameters
+### <a name="simulation-parameters"></a>simulation_parameters
 
 #### 'Pre-remove Offset'
 
@@ -90,7 +96,7 @@ Boolean. If `True`, loads the model from files saved by previous simulations, ne
 
 Boolean. If `True`, loads the test images from experimental data. The filenames of specific images are currently hard-coded into the program, and will need to be changed for specific use cases.
 
-### imaging_parameters
+### <a name="imaging-parameters"></a>imaging_parameters
 
 #### 'Window Function Radius'
 
@@ -145,13 +151,13 @@ Two element dict containing the maximum and minimum intensity values for the int
 
 
 
-### specimen_parameters
+### <a name="specimen-parameters"></a>specimen_parameters
 
 #### 'Mean Inner Potential'
 
 Complex float. The real part is the mean inner potential in volts (~-17 for magnetite), and the imaginary part is related to absorption coefficient. A reasonable value for this is around `1j`.
 
-### Paths
+### <a name="paths"></a>Paths
 
 These paths determine directory locations where input files are found and output files will be saved. Path names end in `/` and the directory must exist.
 
