@@ -194,7 +194,7 @@ class PhaseImagingSystem(object):
         # Unwrap phase
         output = unwrap(output, wrap_around_axis_0=True,
                         wrap_around_axis_1=True)
-        return -1 * output
+        return output
 
     @staticmethod
     @jit
