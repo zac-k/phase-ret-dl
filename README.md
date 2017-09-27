@@ -3,14 +3,21 @@ Phase retrieval using deep learning (phase-ret-dl)
 
 This README is currently under construction.
 
-Thanks to [Hvass-Labs' TensorFlow tutorials](https://github.com/Hvass-Labs/TensorFlow-Tutorials), upon which much of this work is based.
+Thanks to [Hvass-Labs' TensorFlow tutorials](https://github.com/Hvass-Labs/TensorFlow-Tutorials), which were immensely helpful in understanding how to implement neural networks using TensorFlow. Some of the code from the tutorial is used in this project without much alteration.
 
-## Introduction
+This project uses supervised learning to train a neural network on simulated electron micrographs or retrieved phases. This requires a large volume of training data (A minimum of ~5000 examples), which is only feasible if the specimens are procedurally generated. See my repository [random-specimen-generator](https://github.com/zac-k/random-specimen-generator), which contains a python script that uses the Blender API to procedurally generate specimen files that are compatible with this program.
+
+## Table of contents
+
+* [Introduction](#introduction)
+
+
+## <a name="introduction"></a>Introduction
 This package contains an artificial neural network (ANN) implemented using tensorflow 1.2.1.
 
 ## Parameters
 
-[main.py](https://github.com/zac-k/phase-ret-dl/blob/master/main.py) contains four dicts with values that can be adjusted to alter properties of the image simulation, phase retrieval method, and training and testing of the neural network. The parameters are roughly grouped into meaningful categories (the dicts). An explanation of these is given below.
+[main.py](https://github.com/zac-k/phase-ret-dl/blob/master/main.py) contains four dicts with values that can be adjusted to alter properties of the image simulation, phase retrieval method, and training and testing of the neural network. The parameters are roughly grouped into meaningful categories (the dicts). Many of the parameters are subsequently referenced by shorter named variables for brevity. An explanation of these is given below.
 
 ### hyperparameters
 
@@ -142,4 +149,36 @@ Two element dict containing the maximum and minimum intensity values for the int
 
 #### 'Mean Inner Potential'
 
-Complex float. The real part is the mean inner potential in volts (~-17 for magnetite), and the imaginary part is related to absorption coefficient, and is usually around `1j`.
+Complex float. The real part is the mean inner potential in volts (~-17 for magnetite), and the imaginary part is related to absorption coefficient. A reasonable value for this is around `1j`.
+
+### Paths
+
+These paths determine directory locations where input files are found and output files will be saved. Path names end in `/` and the directory must exist.
+
+#### 'Experimental Data Path'
+
+Directory containing experimental micrographs for use as test data.
+
+#### 'Image Output Path'
+
+Directory where png image files (i.e., micrographs)will be saved
+
+#### 'Phase Output Path'
+
+Directory where the exact, retrieved, and ANN computed phases will be output as png files.
+
+#### 'Error Output Path'
+
+Images of the total error for retrieved and ANN computed phases are output here, as is the `errors.txt` file. This file contains a printout of the parameter dicts, the average errors over training and test sets, as well as the individual errors for each example in these sets.
+
+#### 'Load Model Path'
+
+Path where model files, which allow the ANN to be reused without retrianing, must be located. 
+
+#### 'Save Model Path'
+
+Location where model files are saved for reuse.
+
+#### 'Specimen Input Path'
+
+Location that must contain the specimen files.

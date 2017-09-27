@@ -104,7 +104,7 @@ def flatten_layer(layer):
 
 
 np.set_printoptions(threshold=np.inf)
-f = open('./data/figures/errors.txt', 'w')
+f = open(error_output_path + 'errors.txt', 'w')
 
 # Create dict of hyperparameter values, each of which will be assigned to the appropriate
 # variable closer to where they are used. Number of images is the actual number of simulated
@@ -144,9 +144,22 @@ imaging_parameters = {'Window Function Radius': 0.5,
                       'Phase Limits': [-3, 3],
                       'Image Limits': [0, 2]}
 specimen_parameters = {'Mean Inner Potential': -17 + 0.8j}
+paths = {'Experimental Data Path': './data/images/experimental/',
+         'Image Output Path': './data/figures/',
+         'Phase Output Path': './data/figures/',
+         'Error Output Path': './data/figures/',
+         'Load Model Path': './data/figures/',
+         'Save Model Path': './data/figures/',
+         'Specimen Input Path': './data/specimens/training4/'}
 assert simulation_parameters['Rotation Mode'] == 'gaussian' or \
        simulation_parameters['Rotation Mode'] == 'uniform'
-exp_path = './data/images/experimental/'
+
+exp_path = paths['Experimental Data Path']
+image_output_path = paths['Image Output Path']
+phase_output_path = paths['Phase Output Path']
+error_output_path = paths['Error Output Path']
+load_model_path = paths['Load Model Path']
+save_model_path = paths['Save Model Path']
 
 n_savefile_sets = hyperparameters['Train/Valid/Test Split']
 utils.write_dict(f, hyperparameters)
@@ -190,7 +203,7 @@ num_train, num_valid, num_test = hyperparameters['Train/Valid/Test Split']
 
 # Import specimen files
 specimen_files = []
-specimen_path = './data/specimens/training4/'
+specimen_path = paths['Specimen Input Path']
 specimen_ext = ''
 specimen_name = 'particle'
 for i in range(num_train + num_test):
@@ -238,13 +251,13 @@ if not simulation_parameters['Load Model']:
 
         if item < n_savefile_sets[0]:
             plot.save_image(system_train.image_under,
-                            './data/figures/image_train_under_' + str(item) + '.png',
+                            image_output_path + 'image_train_under_' + str(item) + '.png',
                         imaging_parameters['Image Limits'])
             plot.save_image(system_train.image_in,
-                            './data/figures/image_train_in_' + str(item) + '.png',
+                            image_output_path + 'image_train_in_' + str(item) + '.png',
                         imaging_parameters['Image Limits'])
             plot.save_image(system_train.image_over,
-                            './data/figures/image_train_over_' + str(item) + '.png',
+                            image_output_path + 'image_train_over_' + str(item) + '.png',
                         imaging_parameters['Image Limits'])
 
         if input_type == 'images':
@@ -315,13 +328,13 @@ for item in range(num_train, num_test + num_train):
     phase_retrieved_flat_test.append(system_test.phase_retrieved.real.reshape(img_size_flat))
     if item < n_savefile_sets[2] + num_train:
         plot.save_image(system_test.image_under,
-                        './data/figures/image_test_under_' + str(item - num_train) + '.png',
+                        image_output_path + 'image_test_under_' + str(item - num_train) + '.png',
                     imaging_parameters['Image Limits'])
         plot.save_image(system_test.image_in,
-                        './data/figures/image_test_in_' + str(item - num_train) + '.png',
+                        image_output_path + 'image_test_in_' + str(item - num_train) + '.png',
                     imaging_parameters['Image Limits'])
         plot.save_image(system_test.image_over,
-                        './data/figures/image_test_over_' + str(item - num_train) + '.png',
+                        image_output_path + 'image_test_over_' + str(item - num_train) + '.png',
                     imaging_parameters['Image Limits'])
     if input_type == 'images':
         if n_images == 3 or hyperparameters['Train with In-focus Image']:
@@ -435,7 +448,7 @@ elif input_type == 'phases':
                       y_true: phase_exact_flat_test
                       }
 if simulation_parameters['Load Model']:
-    saver.restore(session, './data/figures/model')
+    saver.restore(session, load_model_path + 'model')
 
 else:
     # Initialise variables
@@ -504,28 +517,28 @@ if not simulation_parameters['Experimental Test Data']:
 if not simulation_parameters['Load Model']:
     for i in range(n_savefile_sets[0]):
         plot.save_image(np.reshape(phase_exact_flat_train[i], img_shape),
-                        './data/figures/phase_exact_train_' + str(i) + '.png',
+                        phase_output_path + 'phase_exact_train_' + str(i) + '.png',
                         imaging_parameters['Phase Limits'])
         plot.save_image(np.reshape(phase_retrieved_flat_train[i], img_shape),
-                        './data/figures/phase_retrieved_train_' + str(i) + '.png',
+                        phase_output_path + 'phase_retrieved_train_' + str(i) + '.png',
                         imaging_parameters['Phase Limits'])
 
 for i in range(n_savefile_sets[2]):
     if not simulation_parameters['Experimental Test Data']:
         plot.save_image(np.reshape(phase_exact_flat_test[i], img_shape),
-                        './data/figures/phase_exact_test_' + str(i) + '.png',
+                        phase_output_path + 'phase_exact_test_' + str(i) + '.png',
                         imaging_parameters['Phase Limits'])
         plot.save_image(np.reshape(error_ret[i], img_shape),
-                        './data/figures/error_retrieved_test_' + str(i) + '.png',
+                        error_output_path + 'error_retrieved_test_' + str(i) + '.png',
                         imaging_parameters['Error Limits'])
         plot.save_image(np.reshape(error_adj[i], img_shape),
-                        './data/figures/error_adjusted_test_' + str(i) + '.png',
+                        error_output_path + 'error_adjusted_test_' + str(i) + '.png',
                         imaging_parameters['Error Limits'])
     plot.save_image(np.reshape(phase_retrieved_flat_test[i], img_shape),
-                    './data/figures/phase_retrieved_test_' + str(i) + '.png',
+                    phase_output_path + 'phase_retrieved_test_' + str(i) + '.png',
                     imaging_parameters['Phase Limits'])
     plot.save_image(np.reshape(output_images[i], img_shape),
-                    './data/figures/phase_adjusted_test_' + str(i) + '.png',
+                    phase_output_path + 'phase_adjusted_test_' + str(i) + '.png',
                     imaging_parameters['Phase Limits'])
 
 
@@ -551,7 +564,7 @@ f.close()
 
 # Save trained model
 if not simulation_parameters['Load Model']:
-    saver.save(session, './data/figures/model')
+    saver.save(session, save_model_path + 'model')
 
 #utils.beep()  # Alert user that script has finished
 show()  # Prevent plt.show(block=False) from closing plot window
