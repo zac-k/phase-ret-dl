@@ -15,6 +15,7 @@ This project uses supervised learning to train a neural network on simulated ele
     * [Imaging parameters](#imaging_parameters)
     * [Specimen parameters](#specimen_parameters)
     * [Paths](#paths)
+    * [Example Settings](#example-settings)
 * [Files](#files)
     * [main.py](#mainpy)
     * [phase.py](#phasepy)
@@ -30,7 +31,7 @@ This package contains an artificial neural network (ANN) implemented using tenso
 
 The process begins by simulating two out-of-focus images (and one in-focus, if set) using the projected potential of a specimen that is read from file. Sources of error, such as shot noise and image misalignment, can also be added. These images can then be used to in a phase retrieval algorithm. This project uses the transport-of-intensity equation (TIE), but additional methods (such as the Gerchberg-Saxton algorithm) will probably be added in the future.
 
-The ANN has input layer of size n_images*m^2---where m is the width of each image in pixels, and n_images is one for the phase input method, and two or three for the image input method---and the output layer is size m^2. The images (or phase) are flattened and joined end-to-end to form the input vector. The projected potential is scaled to form an 'exact phase', which is also flattened, and is used as the output vector for training the ANN.
+The ANN has input layer of size n_images*m<sup>2</sup>---where m is the width of each image in pixels, and n_images is one for the phase input method, and two or three for the image input method---and the output layer is size m<sup>2</sup>. The images (or phase) are flattened and joined end-to-end to form the input vector. The projected potential is scaled to form an 'exact phase', which is also flattened, and is used as the output vector for training the ANN.
 
 One input and one output vector constitutes one training pair. A large number of these pairs are generated, and the ANN is trained on these pairs in batches. After training, the ANN can be used to process a test set of input images or phases (depending on which was used in the training). If simulated images are used for the test set, root-mean-square (rms) errors are computed for each output by comparing it with the exact phase. Average rms errors are calculated for the entire set. 
 
@@ -77,17 +78,17 @@ Boolean. Determines whether to use convolutional layers in the ANN. `True` has n
 
 ### 'Number of Epochs'
 
-Number of epochs the training will run for.
+Number of epochs (iterations over the full training set)the training will run for.
 
 ### 'Initialisation Type'
 
-How to initialise the weights and biases. `'identity'` is sufficient for most purposes in the present context. Other options are 'random'`, `'randomised identity'`, `'ones'`, and `'zeros'`.
+How to initialise the weights and biases. `'identity'` is sufficient for most purposes in the present context. Other options are `'random'`, `'randomised identity'`, `'ones'`, and `'zeros'`.
 
 ## <a name="simulation-parameters"></a>simulation_parameters
 
 ### 'Pre-remove Offset'
 
-Boolean. If `True`, removes the mean error from training and test retrieved phases. Used for removing this source of error so that other sources can be studied independently.
+Boolean. If `True`, removes the mean error from training and test retrieved phases. Used for removing this source of error so that other sources can be studied independently. A more rigorous way of doing this would be to compute the mean error only over an annulus, so that the offset is computed as the average difference between the unaltered (free-space) phase. This may be implemented in future versions.
 
 ### 'Misalignment'
 
@@ -201,6 +202,53 @@ Location where model files are saved for reuse.
 ### 'Specimen Input Path'
 
 Location that must contain the specimen files.
+
+## Example settings
+
+Because I am often testing out fringe cases, while at the same time working on improving the code and expanding its functionality, the parameters in the latest version may not be a good starting place for newcomers wanting to understand the process and the code. Here, I am including a set of parameters that 
+
+    hyperparameters = {'Hidden Layer Size': [50000],
+                       'Input Type': 'images',
+                       'Number of Images': 2,
+                       'Train with In-focus Image': False,  # False has no effect if n_images == 3
+                       'Train/Valid/Test Split': [5000, 0, 100],
+                       'Batch Size': 50,
+                       'Optimiser Type': 'gradient descent',
+                       'Learning Rate': 0.5,
+                       'Use Convolutional Layers': False,
+                       'Number of Epochs': 50,
+                       'Initialisation Type': 'identity'}
+                        
+    simulation_parameters = {'Pre-remove Offset': False,
+                             'Misalignment': [True, True, True],  # rotation, scale, translation
+                             'Rotation/Scale/Shift': [3, 0.02, 0.01],  # Rotation is in degrees
+                             'Rotation Mode': 'gaussian',  # 'uniform' or 'gaussian'
+                             'Load Model': False,
+                             'Experimental Test Data': False}
+                             
+    imaging_parameters = {'Window Function Radius': 0.5,
+                          'Accelerating Voltage': 300,  # electron accelerating voltage in keV
+                          'Use Multislice': False,
+                          'Multislice Method': 'files',
+                          'Multislice Wavefield Path': './data/images/multislice/',
+                          'Image Size in Pixels': 64,
+                          'Multislice Resolution in Pixels': 1024,
+                          'Domain Size': 150e-9,  # Width of images in metres
+                          'Noise Level': 0.00,
+                          'Defocus': 10e-6,
+                          'Error Limits': [-3, 3],
+                          'Phase Limits': [-3, 3],
+                          'Image Limits': [0, 2]}
+                          
+    specimen_parameters = {'Mean Inner Potential': -17 + 1j}
+    
+    paths = {'Experimental Data Path': './data/images/experimental/',
+             'Image Output Path': './data/images/',
+             'Phase Output Path': './data/images/',
+             'Error Output Path': './data/images/',
+             'Load Model Path': './data/images/',
+             'Save Model Path': './data/images/',
+             'Specimen Input Path': './data/specimens/'}
 
 # Files
 

@@ -113,20 +113,20 @@ np.set_printoptions(threshold=np.inf)
 # the TIE.
 hyperparameters = {'Hidden Layer Size': [50000],
                    'Input Type': 'images',
-                   'Number of Images': 3,
+                   'Number of Images': 2,
                    'Train with In-focus Image': False,  # False has no effect if n_images == 3
-                   'Train/Valid/Test Split': [5000, 0, 100],
+                   'Train/Valid/Test Split': [5, 0, 1],
                    'Batch Size': 50,
                    'Optimiser Type': 'gradient descent',
                    'Learning Rate': 0.5,
                    'Use Convolutional Layers': False,
                    'Number of Epochs': 50,
-                   'Initialisation Type': 'zeros'}
+                   'Initialisation Type': 'identity'}
 # 'Pre-remove Offest' removes the mean difference between the exact and retrieved phases for both
 # the training and test sets. Will not work with experimental images.
 simulation_parameters = {'Pre-remove Offset': False,
                          'Misalignment': [True, False, False],  # rotation, scale, translation
-                         'Rotation/Scale/Shift': [2, 0.02, 0.01],  # Rotation is in degrees
+                         'Rotation/Scale/Shift': [20, 0.02, 0.01],  # Rotation is in degrees
                          'Rotation Mode': 'gaussian',  # 'uniform' or 'gaussian'
                          'Load Model': False,
                          'Experimental Test Data': False}
@@ -237,11 +237,15 @@ if not simulation_parameters['Load Model']:
         system_train.generate_images(n_images)
         if simulation_parameters['Misalignment'][0]:
             system_train.rotate_images(std=simulation_parameters['Rotation/Scale/Shift'][0],
-                                       mode=simulation_parameters['Rotation Mode'])
+                                       mode=simulation_parameters['Rotation Mode'],
+                                       n_images=n_images)
         if simulation_parameters['Misalignment'][1]:
-            system_train.scale_images(simulation_parameters['Rotation/Scale/Shift'][1])
+            system_train.scale_images(simulation_parameters['Rotation/Scale/Shift'][1],
+                                      n_images=n_images)
         if simulation_parameters['Misalignment'][2]:
-            system_train.shift_images(std=img_size*simulation_parameters['Rotation/Scale/Shift'][2])
+            system_train.shift_images(std=img_size*simulation_parameters['Rotation/Scale/Shift'][2],
+                                      n_images=n_images)
+        system_train.approximate_in_focus()
         system_train.add_noise_to_micrographs()
         system_train.apodise_images(imaging_parameters['Window Function Radius'])
         system_train.retrieve_phase()
@@ -316,11 +320,15 @@ for item in range(num_train, num_test + num_train):
         system_test.generate_images(n_images)
         if simulation_parameters['Misalignment'][0]:
             system_test.rotate_images(std=simulation_parameters['Rotation/Scale/Shift'][0],
-                                      mode=simulation_parameters['Rotation Mode'])
+                                      mode=simulation_parameters['Rotation Mode'],
+                                      n_images=n_images)
         if simulation_parameters['Misalignment'][1]:
-            system_test.scale_images(std=simulation_parameters['Rotation/Scale/Shift'][1])
+            system_test.scale_images(std=simulation_parameters['Rotation/Scale/Shift'][1],
+                                     n_images=n_images)
         if simulation_parameters['Misalignment'][2]:
-            system_test.shift_images(std=img_size*simulation_parameters['Rotation/Scale/Shift'][2])
+            system_test.shift_images(std=img_size*simulation_parameters['Rotation/Scale/Shift'][2],
+                                     n_images=n_images)
+        system_test.approximate_in_focus()
         system_test.add_noise_to_micrographs()
 
     system_test.apodise_images(imaging_parameters['Window Function Radius'])

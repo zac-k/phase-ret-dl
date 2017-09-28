@@ -153,30 +153,39 @@ class PhaseImagingSystem(object):
         else:
             out = img
         return out
-    def rotate_images(self, std, mode):
+    def rotate_images(self, std, mode, n_images):
+        if n_images == 3:
+            if mode == 'uniform':
+                angle = np.random.uniform(0, std)
+            elif mode == 'gaussian':
+                angle = np.random.normal(scale=std)
+            self.image_under = rotate(input=self.image_under, angle=angle, reshape=False, cval=1.0)
         if mode == 'uniform':
             angle = np.random.uniform(0, std)
         elif mode == 'gaussian':
             angle = np.random.normal(scale=std)
-        self.image_under = rotate(input=self.image_under, angle=angle, reshape=False, cval=1.0)
-        angle = np.random.normal(scale=std)
         self.image_over = rotate(input=self.image_over, angle=angle, reshape=False, cval=1.0)
 
-    def scale_images(self, std):
-        factor = np.random.normal(loc=1.0, scale=std)
-        self.image_under = PhaseImagingSystem.scale(self.image_under, factor, cval=1.0)
+    def scale_images(self, std, n_images):
+        if n_images == 3:
+            factor = np.random.normal(loc=1.0, scale=std)
+            self.image_under = PhaseImagingSystem.scale(self.image_under, factor, cval=1.0)
         factor = np.random.normal(loc=1.0, scale=std)
         self.image_over = PhaseImagingSystem.scale(self.image_over, factor, cval=1.0)
 
-    def shift_images(self, std):
+    @staticmethod
+    def _random_vector(std):
         angle = np.random.uniform(0, 2 * PI)
         r = np.abs(np.random.normal(scale=std))
-
         disp = [r * np.cos(angle), r * np.sin(angle)]
-        self.image_under = shift(input=self.image_under, shift=disp, cval=1.0)
-        disp = [np.random.normal(scale=std), np.random.normal(scale=std)]
-        self.image_over = shift(input=self.image_over, shift=disp, cval=1.0)
+        return disp
 
+    def shift_images(self, std, n_images):
+        if n_images == 3:
+            disp = PhaseImagingSystem._random_vector(std)
+            self.image_under = shift(input=self.image_under, shift=disp, cval=1.0)
+        disp = PhaseImagingSystem._random_vector(std)
+        self.image_over = shift(input=self.image_over, shift=disp, cval=1.0)
 
     @staticmethod
     def extract_phase_from_wavefield(wave):
@@ -2348,15 +2357,16 @@ class PhaseImagingSystem(object):
         self.image_under = self._transfer_image(defocus=-self.defocus)
         if n_images == 3:
             self.image_in = self._transfer_image(defocus=0)
-        else:
-            self.image_in = (self.image_over + self.image_under) / 2
-        while len(self.image_in) > self.image_size:
-            self.image_in = PhaseImagingSystem._downsample(self.image_in)
+            while len(self.image_in) > self.image_size:
+                self.image_in = PhaseImagingSystem._downsample(self.image_in)
         while len(self.image_under) > self.image_size:
             self.image_under = PhaseImagingSystem._downsample(self.image_under)
         while len(self.image_over) > self.image_size:
             self.image_over = PhaseImagingSystem._downsample(self.image_over)
         return
+
+    def approximate_in_focus(self):
+        self.image_in = (self.image_over + self.image_under) / 2
 
     def add_noise_to_micrographs(self):
         images = [self.image_under,
