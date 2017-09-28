@@ -92,7 +92,7 @@ Boolean. If `True`, removes the mean error from training and test retrieved phas
 
 ### 'Misalignment'
 
-Three element list of booleans. Tells the ANN whether to use random variations in rotation, scaling, and translation, respectively.
+Three element list of booleans. Tells the ANN whether to use random variations in rotation, scaling, and translation, respectively. Without loss of generality, one image in each through-focal series can be left unaltered to act as a reference against which to compare the exact phase. In three image mode, the reference image is the in-focus image. In two image mode, it is the under-focus image. 
 
 ### 'Rotation/Scale/Shift'
 
@@ -258,9 +258,12 @@ Contains the dicts that set up the ANN and phase retrieval parameters. Runs the 
 
 ## [phase.py](https://github.com/zac-k/phase-ret-dl/blob/master/phase.py)
 
-PhaseImagingSystem class. Simulates out-of-focus electron micrographs using the projection approximation or multislice method. The multislice method is a python implementation of [E. J. Kirkland's C code](http://people.ccmr.cornell.edu/~kirkland/), but runs extremely slowly, and needs to be vectorised to make it run fast enough to use. Wavefield files, generated using the C code separately, can be imported into this project, and that is the method I recommend if you want to use the more realistic image simulations created using the multislice approach, unless you have the time and expertise to vectorise the python code.
+PhaseImagingSystem class. Simulates out-of-focus electron micrographs using the projection approximation or multislice method<sup>1</sup>. Wavefield files, generated using the C code separately, can be imported into this project, and that is the method I recommend if you want to use the more realistic image simulations created using the multislice approach, unless you have the time and expertise to vectorise the python code.
 
 This file also contains methods to retrieve the phase, using the TIE, from the out-of-focus micrographs, and includes relevant methods such as those for downsampling.
+
+
+<sup>1. The multislice method is a python implementation of [E. J. Kirkland's C code](http://people.ccmr.cornell.edu/~kirkland/), but runs extremely slowly. The code needs to be vectorised to make it run fast enough to use; this is not straightforward.</sup>
 
 ## [plot.py](https://github.com/zac-k/phase-ret-dl/blob/master/plot.py)
 
