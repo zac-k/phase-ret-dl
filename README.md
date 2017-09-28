@@ -15,6 +15,13 @@ This project uses supervised learning to train a neural network on simulated ele
     * [Imaging parameters](#imaging_parameters)
     * [Specimen parameters](#specimen_parameters)
     * [Paths](#paths)
+* [Files](#files)
+    * [main.py](#main.py)
+    * [phase.py](#phase.py)
+    * [plot.py](#plot.py)
+    * [utils.py](#utils.py)
+    * [README.md](#README.md)
+    * [notes.txt](#notes.txt)
 
 
 
@@ -194,3 +201,31 @@ Location where model files are saved for reuse.
 ### 'Specimen Input Path'
 
 Location that must contain the specimen files.
+
+# Files
+
+## [main.py](https://github.com/zac-k/phase-ret-dl/blob/master/main.py)
+
+Contains the dicts that set up the ANN and phase retrieval parameters. Runs the phase retrieval system, trains the ANN, and computes the errors on the test set.
+
+## [phase.py](https://github.com/zac-k/phase-ret-dl/blob/master/phase.py)
+
+PhaseImagingSystem class. Simulates out-of-focus electron micrographs using the projection approximation or multislice method. The multislice method is a python implementation of [E. J. Kirkland's C code](http://people.ccmr.cornell.edu/~kirkland/), but runs extremely slowly, and needs to be vectorised to make it run fast enough to use. Wavefield files, generated using the C code separately, can be imported into this project, and that is the method I recommend if you want to use the more realistic image simulations created using the multislice approach, unless you have the time and expertise to vectorise the python code.
+
+This file also contains methods to retrieve the phase, using the TIE, from the out-of-focus micrographs, and includes relevant methods such as those for downsampling.
+
+## [plot.py](https://github.com/zac-k/phase-ret-dl/blob/master/plot.py)
+
+Contains functions for displaying images and plots. Can display images immediately using matplotlib, but [main.py](https://github.com/zac-k/phase-ret-dl/blob/master/main.py) is currently set up to save the images directly in png format.
+
+## [utils.py](https://github.com/zac-k/phase-ret-dl/blob/master/utils.py)
+
+Library of functions that do not belong anywhere else. Includes error calculation functions.
+
+## [README.md](https://github.com/zac-k/phase-ret-dl/blob/master/README.md)
+
+This README.
+
+## [notes.txt](https://github.com/zac-k/phase-ret-dl/blob/master/notes.txt)
+
+These are just notes I keep on my own personal usage of this package. Some of the information in there may be useful to others, such as what learning rates to try for certain optimisers, but most of it will not make sense out of context. The notes are often speculative and not based on well tested ideas, so read with caution.
