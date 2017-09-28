@@ -126,7 +126,7 @@ hyperparameters = {'Hidden Layer Size': [50000],
 # the training and test sets. Will not work with experimental images.
 simulation_parameters = {'Pre-remove Offset': False,
                          'Misalignment': [True, False, False],  # rotation, scale, translation
-                         'Rotation/Scale/Shift': [1, 0.02, 0.01],  # Rotation is in degrees
+                         'Rotation/Scale/Shift': [2, 0.02, 0.01],  # Rotation is in degrees
                          'Rotation Mode': 'gaussian',  # 'uniform' or 'gaussian'
                          'Load Model': False,
                          'Experimental Test Data': False}

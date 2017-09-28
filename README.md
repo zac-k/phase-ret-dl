@@ -16,12 +16,12 @@ This project uses supervised learning to train a neural network on simulated ele
     * [Specimen parameters](#specimen_parameters)
     * [Paths](#paths)
 * [Files](#files)
-    * [main.py](#main.py)
-    * [phase.py](#phase.py)
-    * [plot.py](#plot.py)
-    * [utils.py](#utils.py)
-    * [README.md](#README.md)
-    * [notes.txt](#notes.txt)
+    * [main.py](#mainpy)
+    * [phase.py](#phasepy)
+    * [plot.py](#plotpy)
+    * [utils.py](#utilspy)
+    * [README.md](#READMEmd)
+    * [notes.txt](#notestxt)
 
 
 
