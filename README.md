@@ -10,6 +10,7 @@ This project uses supervised learning to train a neural network on simulated ele
 # Table of contents
 
 * [Introduction](#introduction)
+* [System requirements](#system-requirements)
 * [Parameters](#parameters)
     * [Hyperparameters](#hyperparameters)
     * [Imaging parameters](#imaging_parameters)
@@ -34,6 +35,22 @@ The process begins by simulating two out-of-focus images (and one in-focus, if s
 The ANN has input layer of size n_images*m<sup>2</sup>---where m is the width of each image in pixels, and n_images is one for the phase input method, and two or three for the image input method---and the output layer is size m<sup>2</sup>. The images (or phase) are flattened and joined end-to-end to form the input vector. The projected potential is scaled to form an 'exact phase', which is also flattened, and is used as the output vector for training the ANN.
 
 One input and one output vector constitutes one training pair. A large number of these pairs are generated, and the ANN is trained on these pairs in batches. After training, the ANN can be used to process a test set of input images or phases (depending on which was used in the training). If simulated images are used for the test set, root-mean-square (rms) errors are computed for each output by comparing it with the exact phase. Average rms errors are calculated for the entire set. 
+
+# System requirements
+
+The hardware required depends on the resolution you are using, the number of training and test sets, and the complexity of the model. I am currently using
+
+CPU:    Core i5-4670K @4.0GHz
+
+RAM:    16GB DDR3
+
+GPU:    GTX970 - 4GB VRAM
+
+When running on the cpu, this is fine for most of the settings I use. Simulating the training data (from stored specimen files) takes about 40 minutes, and training the network with 5000 examples takes about 4 hours.
+
+It also works fine on my other system (Core i5-2500K @4.2GHz, 8GB DDR3) at about the same speed, but the RAM maxes out and it starts using virtual memory, which makes the PC largely unusable for other purposes while it's running.
+
+GPU compute was unusable due to the relatively small amount of VRAM on my card, and I suggest making sure you have enough VRAM for your purposes before going to the trouble of installing tensorflow-gpu, CUDA, and CuDNN, if you don't already have them. 
 
 # Parameters
 
