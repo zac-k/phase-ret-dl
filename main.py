@@ -115,7 +115,7 @@ hyperparameters = {'Hidden Layer Size': [50000],
                    'Input Type': 'images',
                    'Number of Images': 2,
                    'Train with In-focus Image': False,  # False has no effect if n_images == 3
-                   'Train/Valid/Test Split': [5, 0, 1],
+                   'Train/Valid/Test Split': [5000, 0, 100],
                    'Batch Size': 50,
                    'Optimiser Type': 'gradient descent',
                    'Learning Rate': 0.5,
@@ -126,7 +126,7 @@ hyperparameters = {'Hidden Layer Size': [50000],
 # the training and test sets. Will not work with experimental images.
 simulation_parameters = {'Pre-remove Offset': False,
                          'Misalignment': [True, False, False],  # rotation, scale, translation
-                         'Rotation/Scale/Shift': [20, 0.02, 0.01],  # Rotation is in degrees
+                         'Rotation/Scale/Shift': [60, 0.02, 0.01],  # Rotation is in degrees
                          'Rotation Mode': 'gaussian',  # 'uniform' or 'gaussian'
                          'Load Model': False,
                          'Experimental Test Data': False}
@@ -293,7 +293,7 @@ phase_retrieved_flat_test = []
 image_flat_test = []
 
 # Compute retrieved test phases and flatten test data
-print("Generating test data")
+print("Generating test data...")
 test_generate_bar = pyprind.ProgBar(num_test, stream=sys.stdout)
 for item in range(num_train, num_test + num_train):
     test_generate_bar.update()
@@ -543,7 +543,10 @@ if not simulation_parameters['Experimental Test Data']:
     error_adj = (np.array(output_images) - np.array(phase_exact_flat_test)).tolist()
 
 if not simulation_parameters['Load Model']:
+    print("Saving phases from training set...")
+    train_phase_save_bar = pyprind.ProgBar(n_savefile_sets[0], stream=sys.stdout)
     for i in range(n_savefile_sets[0]):
+        train_phase_save_bar.update()
         plot.save_image(np.reshape(phase_exact_flat_train[i], img_shape),
                         phase_output_path + 'phase_exact_train_' + str(i) + '.png',
                         imaging_parameters['Phase Limits'])
@@ -551,7 +554,10 @@ if not simulation_parameters['Load Model']:
                         phase_output_path + 'phase_retrieved_train_' + str(i) + '.png',
                         imaging_parameters['Phase Limits'])
 
+print("Saving phases and errors from test set...")
+test_phase_save_bar = pyprind.ProgBar(n_savefile_sets[2], stream=sys.stdout)
 for i in range(n_savefile_sets[2]):
+    test_phase_save_bar.update()
     if not simulation_parameters['Experimental Test Data']:
         plot.save_image(np.reshape(phase_exact_flat_test[i], img_shape),
                         phase_output_path + 'phase_exact_test_' + str(i) + '.png',
