@@ -44,8 +44,8 @@ def average_normalised_rms_error_flat(exact_flat, reconstructed_flat):
     for i in range(n_examples):
         error[i] = normalised_rms_error(exact_flat[i],
                                       reconstructed_flat[i])
-    output = [np.mean(error), np.std(error)]
-    return error
+    output = [np.mean(error), np.std(error, ddof=1)]
+    return output
 
 
 def beep():

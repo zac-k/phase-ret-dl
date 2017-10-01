@@ -513,14 +513,13 @@ else:
 
 
 
-
 # Calculate and print average normalised rms error in test set after processing through
 # trained neural network
 error = tf.sqrt(tf.reduce_sum(tf.squared_difference(y_true, output), 1) / tf.reduce_sum(tf.square(y_true), 1))
-accuracy = tf.reduce_mean(error)
-acc, x_val = session.run([accuracy, x], feed_dict=feed_dict_test)
-print("Accuracy on ", "test", "-set (post-adjustment): {0: .1%}".format(acc), sep='')
-f.write("Accuracy on test-set (post-adjustment): {0: .1%}".format(acc) + '\n')
+accuracy_mean, accuracy_var = tf.nn.moments(error, axes=[0])  # tf.reduce_mean(error)
+acc, var, x_val = session.run([accuracy_mean, accuracy_var, x], feed_dict=feed_dict_test)
+print("Accuracy on ", "test", "-set (post-adjustment): {0: .1%}".format(acc) + "+/- {0: .1%}".format(var), sep='')
+f.write("Accuracy on test-set (post-adjustment): {0: .1%}".format(acc) + "+/- {0: .1%}".format(var) + '\n')
 
 # Obtain output of neural net on test set
 output_images = session.run(output, feed_dict=feed_dict_test)
