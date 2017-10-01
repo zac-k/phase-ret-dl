@@ -283,8 +283,8 @@ if not simulation_parameters['Load Model']:
     # Define average error in training set, calculate it, and print output.
     if input_type == 'phases':
         error_train_ave = utils.average_normalised_rms_error_flat(phase_exact_flat_train, phase_retrieved_flat_train)
-        print("Average accuracy on ", "training", "-set: {0: .1%}".format(error_train_ave), sep='')
-        f.write("Average accuracy on training-set: {0: .1%}".format(error_train_ave) + '\n')
+        print("Average accuracy on ", "training", "-set: {0: .1%}".format(error_train_ave[0]) + "+/- {0: .1%}".format(error_train_ave[1]), sep='')
+        f.write("Average accuracy on training-set: {0: .1%}".format(error_train_ave[0]) + "+/- {0: .1%}".format(error_train_ave[1]) + '\n')
 
 
 # Create arrays to hold flattened test data
@@ -363,8 +363,8 @@ for item in range(num_train, num_test + num_train):
 # through neural network
 if len(phase_exact_flat_test) > 0 and not simulation_parameters['Experimental Test Data']:
     error_pre_adj = utils.average_normalised_rms_error_flat(phase_exact_flat_test, phase_retrieved_flat_test)
-    print("Accuracy on test set (pre adjustment): {0: .1%}".format(error_pre_adj))
-    f.write("Accuracy on test set (pre adjustment): {0: .1%}".format(error_pre_adj) + '\n')
+    print("Accuracy on test set (pre adjustment): {0: .1%}".format(error_pre_adj[0]) + "+/- {0: .1%}".format(error_pre_adj[1]))
+    f.write("Accuracy on test set (pre adjustment): {0: .1%}".format(error_pre_adj[0]) + "+/- {0: .1%}".format(error_pre_adj[1]) + '\n')
 
 # Determine number of nodes in input layer
 if input_type == 'images':

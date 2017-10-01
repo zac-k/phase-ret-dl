@@ -38,12 +38,13 @@ def average_normalised_rms_error_flat(exact_flat, reconstructed_flat):
     """
 
     assert np.shape(exact_flat) == np.shape(reconstructed_flat)
-    error = 0
+
     n_examples = len(exact_flat)
+    error = np.zeros(n_examples)
     for i in range(n_examples):
-        error += normalised_rms_error(exact_flat[i],
+        error[i] = normalised_rms_error(exact_flat[i],
                                       reconstructed_flat[i])
-    error /= n_examples
+    output = [np.mean(error), np.std(error)]
     return error
 
 
