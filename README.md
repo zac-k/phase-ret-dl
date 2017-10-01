@@ -1,11 +1,10 @@
 Phase retrieval using deep learning (phase-ret-dl)
 ==================================================
 
-This README is currently under construction.
 
-Thanks to [Hvass-Labs' TensorFlow tutorials](https://github.com/Hvass-Labs/TensorFlow-Tutorials), which were immensely helpful in understanding how to implement neural networks using TensorFlow. Some of the code from the tutorial is used in this project without much alteration.
 
-This project uses supervised learning to train a neural network on simulated electron micrographs or retrieved phases. This requires a large volume of training data (A minimum of ~5000 examples), which is only feasible if the specimens are procedurally generated. See my repository [random-specimen-generator](https://github.com/zac-k/random-specimen-generator), which contains a python script that uses the Blender API to procedurally generate specimen files that are compatible with this program.
+
+
 
 # Table of contents
 
@@ -24,13 +23,17 @@ This project uses supervised learning to train a neural network on simulated ele
     * [utils.py](#utilspy)
     * [README.md](#READMEmd)
     * [notes.txt](#notestxt)
+* [Acknowledgements](#acknowledgements)
 
 
 
 # Introduction
-This package contains an artificial neural network (ANN) implemented using tensorflow 1.2.1, and a phase imaging system class, which simulates out-of-focus images using the projection approximation, and retrieves the phase using a FFT solution to the transport-of-intensity equation.
 
-The process begins by simulating two out-of-focus images (and one in-focus, if set) using the projected potential of a specimen that is read from file. Sources of error, such as shot noise and image misalignment, can also be added. These images can then be used to in a phase retrieval algorithm. This project uses the transport-of-intensity equation (TIE), but additional methods (such as the Gerchberg-Saxton algorithm) will probably be added in the future.
+This project uses supervised learning to train a neural network on simulated electron micrographs or retrieved phases. This requires a large volume of training data (A minimum of ~5000 examples), which is only feasible if the specimens are procedurally generated. See my repository [random-specimen-generator](https://github.com/zac-k/random-specimen-generator), which contains a python script that uses the Blender API to procedurally generate specimen files that are compatible with this program.
+
+A phase imaging system class, which simulates out-of-focus images using the projection approximation, and retrieves the phase using a FFT solution to the transport-of-intensity equation is used to train, and test, an artificial neural network (ANN), which is implemented using tensorflow 1.2.1.
+
+The process begins by simulating two out-of-focus images (and one in-focus, if set) using the projected potential of a specimen that is read from file. Sources of error, such as shot noise and image misalignment, can also be added. These images can then be used to obtain the phase. This project uses a phase retrieval algorithm based on the transport-of-intensity equation (TIE), but additional methods (such as the Gerchberg-Saxton algorithm) will probably be added in the future.
 
 The ANN has input layer of size n_images*m<sup>2</sup>---where m is the width of each image in pixels, and n_images is one for the phase input method, and two or three for the image input method---and the output layer is size m<sup>2</sup>. The images (or phase) are flattened and joined end-to-end to form the input vector. The projected potential is scaled to form an 'exact phase', which is also flattened, and is used as the output vector for training the ANN.
 
@@ -46,7 +49,7 @@ RAM:    16GB DDR3
 
 GPU:    GTX970 - 4GB VRAM
 
-When running on the cpu, this is fine for most of the settings I use. Simulating the training data (from stored specimen files) takes about 40 minutes, and training the network with 5000 examples takes about 4 hours.
+When running on the cpu, this is fine for most of the settings I use. Simulating the training data (from stored specimen files) takes about 40 minutes, and training the network with 5000 examples takes about 5 hours. Processing a test set of 100 examples, including calculating errors and saving images, takes approximately half an hour.
 
 It also works fine on my other system (Core i5-2500K @4.2GHz, 8GB DDR3) at about the same speed, but the RAM maxes out and it starts using virtual memory, which makes the PC largely unusable for other purposes while it's running.
 
@@ -288,7 +291,7 @@ Contains functions for displaying images and plots. Can display images immediate
 
 ## [utils.py](https://github.com/zac-k/phase-ret-dl/blob/master/utils.py)
 
-Library of functions that do not belong anywhere else. Includes error calculation functions.
+Small library of functions that do not belong anywhere else. Includes error calculation functions.
 
 ## [README.md](https://github.com/zac-k/phase-ret-dl/blob/master/README.md)
 
@@ -297,3 +300,7 @@ This README.
 ## [notes.txt](https://github.com/zac-k/phase-ret-dl/blob/master/notes.txt)
 
 These are just notes I keep on my own personal usage of this package. Some of the information in there may be useful to others, such as what learning rates to try for certain optimisers, but most of it will not make sense out of context. The notes are often speculative and not based on well tested ideas, so read with caution.
+
+# Acknowledgements
+
+Thanks to [Hvass-Labs' TensorFlow tutorials](https://github.com/Hvass-Labs/TensorFlow-Tutorials), which were immensely helpful in understanding how to implement neural networks using TensorFlow. Some of the code from the tutorial is used in this project without much alteration.
