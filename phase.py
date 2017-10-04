@@ -2322,21 +2322,15 @@ class PhaseImagingSystem(object):
         self.transfer_function = np.exp(1j * (PI * defocus * wavelength * self.k_squared_kernel))
         return
 
-    def _transfer_image(self, defocus):
+    def _transfer_image(self, defocus, wavefunction, image):
         """
         Uses the defocus exact_phase (at the image plane) to produce an out of focus
-        image.
+        image or wavefield.
 
         :param self:
         :param defocus:
         :return:
         """
-        if self.use_multislice:
-            wavefunction = self.wave_multislice_hr
-        else:
-            wavefunction = np.exp(1j * self.phase_exact)
-
-
         self._set_transfer_function(defocus=defocus)
 
         wavefunction = fft.fft2(wavefunction)
@@ -2344,8 +2338,10 @@ class PhaseImagingSystem(object):
         wavefunction = self.transfer_function * wavefunction
         wavefunction = fft.ifftshift(wavefunction)
         wavefunction = fft.ifft2(wavefunction)
-
-        return np.absolute(wavefunction) * np.absolute(wavefunction)
+        if image:
+            return np.absolute(wavefunction) * np.absolute(wavefunction)
+        else:
+            return wavefunction
 
     def generate_images(self, n_images):
         assert n_images == 2 or n_images == 3
@@ -2353,10 +2349,14 @@ class PhaseImagingSystem(object):
         Compute images at under-, in-, and over-focus
         :return:
         """
-        self.image_over = self._transfer_image(defocus=self.defocus)
-        self.image_under = self._transfer_image(defocus=-self.defocus)
+        if self.use_multislice:
+            wavefunction = self.wave_multislice_hr
+        else:
+            wavefunction = np.exp(1j * self.phase_exact)
+        self.image_over = self._transfer_image(defocus=self.defocus, wavefunction=wavefunction, image=True)
+        self.image_under = self._transfer_image(defocus=-self.defocus, wavefunction=wavefunction, image=True)
         if n_images == 3:
-            self.image_in = self._transfer_image(defocus=0)
+            self.image_in = self._transfer_image(defocus=0, wavefunction=wavefunction, image=True)
             while len(self.image_in) > self.image_size:
                 self.image_in = PhaseImagingSystem._downsample(self.image_in)
         while len(self.image_under) > self.image_size:
@@ -2426,7 +2426,52 @@ class PhaseImagingSystem(object):
         offset_avg = np.mean(np.mean(offset))
         self.phase_retrieved = self.phase_retrieved - offset_avg
 
-    def retrieve_phase(self):
+    def retrieve_phase(self, method):
+        if method == 'TIE':
+            self.retrieve_phase_TIE()
+        elif method == 'GS':
+            self.retrieve_phase_GS()
+        else:
+            raise ValueError('Unknown Phase Retrieval Method')
+
+    def retrieve_phase_GS(self):
+        """
+        Retrieve phase from under- and over-focus images using
+        the Gerchberg-Saxton-Misell [1] algorithm.
+
+        ##########################################################################
+        ######                                                              ######
+        ###### Note: this function has not been tested under any reasonable ######
+        ###### set of parameters. Please test that it is working before     ######
+        ###### using it.                                                    ######
+        ######                                                              ######
+        ##########################################################################
+
+        [1] D L Misell 1973 J. Phys. D: Appl. Phys. 6 2200
+        :return:
+        """
+
+        print(self.retrieve_phase_GS.__doc__)
+        iterations = 200
+
+        under_phase = np.random.uniform(0, 2 * PI, (self.image_size, self.image_size))
+        over_amplitude = np.sqrt(np.clip(self.image_over, 0, None))
+        under_amplitude = np.sqrt(np.clip(self.image_under, 0, None))
+
+        under_prime = under_amplitude * np.exp(1j * under_phase)
+
+        for i in range(iterations):
+            over_prime = self._transfer_image(self.defocus * 2, under_prime, image=False)
+            over_phase = np.angle(over_prime)
+            over_prime = over_amplitude * np.exp(1j * over_phase)
+            under_prime = self._transfer_image(-1 * self.defocus * 2, over_prime, image=False)
+            under_phase = np.angle(under_prime)
+            under_prime = under_amplitude * np.exp(1j * under_phase)
+
+        result = np.angle(self._transfer_image(self.defocus, under_prime, image=False))
+        self.phase_retrieved = unwrap(result, wrap_around_axis_0=True, wrap_around_axis_1=True)
+
+    def retrieve_phase_TIE(self):
         """
         Utilise the transport-of-intensity equation to compute the phase from
         the micrographs.
