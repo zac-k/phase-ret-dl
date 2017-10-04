@@ -113,9 +113,10 @@ np.set_printoptions(threshold=np.inf)
 # the TIE.
 hyperparameters = {'Hidden Layer Size': [50000],
                    'Input Type': 'images',
+                   'Output Type': 'magnetic phase',
                    'Number of Images': 2,
                    'Train with In-focus Image': False,  # False has no effect if n_images == 3
-                   'Train/Valid/Test Split': [5000, 0, 100],
+                   'Train/Valid/Test Split': [1, 0, 1],
                    'Batch Size': 50,
                    'Optimiser Type': 'gradient descent',
                    'Learning Rate': 0.5,
@@ -125,8 +126,9 @@ hyperparameters = {'Hidden Layer Size': [50000],
 # 'Pre-remove Offest' removes the mean difference between the exact and retrieved phases for both
 # the training and test sets. Will not work with experimental images.
 simulation_parameters = {'Pre-remove Offset': False,
-                         'Misalignment': [True, False, False],  # rotation, scale, translation
-                         'Rotation/Scale/Shift': [60, 0.02, 0.01],  # Rotation is in degrees
+                         'Phase Retrieval Method': 'TIE',
+                         'Misalignment': [False, False, False],  # rotation, scale, translation
+                         'Rotation/Scale/Shift': [0, 0.04, 0.01],  # Rotation is in degrees
                          'Rotation Mode': 'gaussian',  # 'uniform' or 'gaussian'
                          'Load Model': False,
                          'Experimental Test Data': False}
@@ -153,8 +155,9 @@ paths = {'Experimental Data Path': './data/images/experimental/',
          'Specimen Input Path': './data/specimens/training4/'}
 
 
-assert simulation_parameters['Rotation Mode'] == 'gaussian' or \
-       simulation_parameters['Rotation Mode'] == 'uniform'
+assert simulation_parameters['Rotation Mode'] in ('gaussian', 'uniform')
+assert simulation_parameters['Phase Retrieval Method'] in ('TIE', 'GS')
+assert hyperparameters['Output Type'] in ('magnetic phase', 'electrostatic phase', 'total phase')
 
 
 exp_path = paths['Experimental Data Path']
@@ -248,7 +251,7 @@ if not simulation_parameters['Load Model']:
         system_train.approximate_in_focus()
         system_train.add_noise_to_micrographs()
         system_train.apodise_images(imaging_parameters['Window Function Radius'])
-        system_train.retrieve_phase()
+        system_train.retrieve_phase(method=simulation_parameters['Phase Retrieval Method'])
         if simulation_parameters['Pre-remove Offset']:
             system_train.remove_offset()
 
@@ -277,15 +280,11 @@ if not simulation_parameters['Load Model']:
                 image_flat_train.append(np.concatenate((system_train.image_under.real.reshape(img_size_flat),
                                         system_train.image_over.real.reshape(img_size_flat))))
 
-
-
-
     # Define average error in training set, calculate it, and print output.
     if input_type == 'phases':
         error_train_ave = utils.average_normalised_rms_error_flat(phase_exact_flat_train, phase_retrieved_flat_train)
-        print("Average accuracy on ", "training", "-set: {0: .1%}".format(error_train_ave[0]) + "+/- {0: .1%}".format(error_train_ave[1]), sep='')
-        f.write("Average accuracy on training-set: {0: .1%}".format(error_train_ave[0]) + "+/- {0: .1%}".format(error_train_ave[1]) + '\n')
-
+        print("Average accuracy on ", "training", "-set: {0: .1%}".format(error_train_ave[0]) + " +/- {0: .1%}".format(error_train_ave[1]), sep='')
+        f.write("Average accuracy on training-set: {0: .1%}".format(error_train_ave[0]) + " +/- {0: .1%}".format(error_train_ave[1]) + '\n')
 
 # Create arrays to hold flattened test data
 phase_exact_flat_test = []
@@ -332,7 +331,7 @@ for item in range(num_train, num_test + num_train):
         system_test.add_noise_to_micrographs()
 
     system_test.apodise_images(imaging_parameters['Window Function Radius'])
-    system_test.retrieve_phase()
+    system_test.retrieve_phase(method=simulation_parameters['Phase Retrieval Method'])
     if simulation_parameters['Pre-remove Offset']:
         system_test.remove_offset()
     system_test.apodise_phases(imaging_parameters['Window Function Radius'])
@@ -357,14 +356,12 @@ for item in range(num_train, num_test + num_train):
             image_flat_test.append(np.concatenate((system_test.image_under.real.reshape(img_size_flat),
                                    system_test.image_over.real.reshape(img_size_flat))))
 
-
-
 # Calculate and print average normalised rms error in test set prior to processing
 # through neural network
 if len(phase_exact_flat_test) > 0 and not simulation_parameters['Experimental Test Data']:
     error_pre_adj = utils.average_normalised_rms_error_flat(phase_exact_flat_test, phase_retrieved_flat_test)
-    print("Accuracy on test set (pre adjustment): {0: .1%}".format(error_pre_adj[0]) + "+/- {0: .1%}".format(error_pre_adj[1]))
-    f.write("Accuracy on test set (pre adjustment): {0: .1%}".format(error_pre_adj[0]) + "+/- {0: .1%}".format(error_pre_adj[1]) + '\n')
+    print("Accuracy on test set (pre adjustment): {0: .1%}".format(error_pre_adj[0]) + " +/- {0: .1%}".format(error_pre_adj[1]))
+    f.write("Accuracy on test set (pre adjustment): {0: .1%}".format(error_pre_adj[0]) + " +/- {0: .1%}".format(error_pre_adj[1]) + '\n')
 
 # Determine number of nodes in input layer
 if input_type == 'images':
@@ -518,8 +515,8 @@ else:
 error = tf.sqrt(tf.reduce_sum(tf.squared_difference(y_true, output), 1) / tf.reduce_sum(tf.square(y_true), 1))
 accuracy_mean, accuracy_var = tf.nn.moments(error, axes=[0])  # tf.reduce_mean(error)
 acc, var, x_val = session.run([accuracy_mean, accuracy_var, x], feed_dict=feed_dict_test)
-print("Accuracy on ", "test", "-set (post-adjustment): {0: .1%}".format(acc) + "+/- {0: .1%}".format(var), sep='')
-f.write("Accuracy on test-set (post-adjustment): {0: .1%}".format(acc) + "+/- {0: .1%}".format(var) + '\n')
+print("Accuracy on ", "test", "-set (post-adjustment): {0: .1%}".format(acc) + " +/- {0: .1%}".format(np.sqrt(var)), sep='')
+f.write("Accuracy on test-set (post-adjustment): {0: .1%}".format(acc) + " +/- {0: .1%}".format(np.sqrt(var)) + '\n')
 
 # Obtain output of neural net on test set
 output_images = session.run(output, feed_dict=feed_dict_test)
