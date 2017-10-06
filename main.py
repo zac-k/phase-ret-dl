@@ -134,7 +134,7 @@ simulation_parameters = {'Pre-remove Offset': False,
                          'Load Model': False,
                          'Experimental Test Data': False,
                          'Retrieve Phase Component': 'total',  # 'total', 'electrostatic', or 'magnetic'
-                         }  # todo: implement rot/scale/shift variations for reverse micrographs
+                         }
 imaging_parameters = {'Window Function Radius': 0.5,
                       'Accelerating Voltage': 300,  # electron accelerating voltage in keV
                       'Use Multislice': False,

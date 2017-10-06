@@ -190,7 +190,23 @@ class PhaseImagingSystem(object):
         elif mode == 'gaussian':
             angle = np.random.normal(scale=std)
         self.image_over = rotate(input=self.image_over, angle=angle, reshape=False, cval=1.0)
-
+        if self.flipping:
+            if n_images == 3:
+                if mode == 'uniform':
+                    angle = np.random.uniform(0, std)
+                elif mode == 'gaussian':
+                    angle = np.random.normal(scale=std)
+                self.image_in_reverse = rotate(input=self.image_in_reverse, angle=angle, reshape=False, cval=1.0)
+            if mode == 'uniform':
+                angle = np.random.uniform(0, std)
+            elif mode == 'gaussian':
+                angle = np.random.normal(scale=std)
+            self.image_under_reverse = rotate(input=self.image_under_reverse, angle=angle, reshape=False, cval=1.0)
+            if mode == 'uniform':
+                angle = np.random.uniform(0, std)
+            elif mode == 'gaussian':
+                angle = np.random.normal(scale=std)
+            self.image_over_reverse = rotate(input=self.image_over, angle=angle, reshape=False, cval=1.0)
 
     def scale_images(self, std, n_images):
         if n_images == 3:
@@ -198,6 +214,14 @@ class PhaseImagingSystem(object):
             self.image_under = PhaseImagingSystem.scale(self.image_under, factor, cval=1.0)
         factor = np.random.normal(loc=1.0, scale=std)
         self.image_over = PhaseImagingSystem.scale(self.image_over, factor, cval=1.0)
+        if self.flipping:
+            if n_images == 3:
+                factor = np.random.normal(loc=1.0, scale=std)
+                self.image_in_reverse = PhaseImagingSystem.scale(self.image_in_reverse, factor, cval=1.0)
+            factor = np.random.normal(loc=1.0, scale=std)
+            self.image_under_reverse = PhaseImagingSystem.scale(self.image_under_reverse, factor, cval=1.0)
+            factor = np.random.normal(loc=1.0, scale=std)
+            self.image_over_reverse = PhaseImagingSystem.scale(self.image_over_reverse, factor, cval=1.0)
 
     @staticmethod
     def _random_vector(std):
@@ -212,6 +236,14 @@ class PhaseImagingSystem(object):
             self.image_under = shift(input=self.image_under, shift=disp, cval=1.0)
         disp = PhaseImagingSystem._random_vector(std)
         self.image_over = shift(input=self.image_over, shift=disp, cval=1.0)
+        if self.flipping:
+            if n_images == 3:
+                disp = PhaseImagingSystem._random_vector(std)
+                self.image_in_reverse = shift(input=self.image_in_reverse, shift=disp, cval=1.0)
+            disp = PhaseImagingSystem._random_vector(std)
+            self.image_under_reverse = shift(input=self.image_under_reverse, shift=disp, cval=1.0)
+            disp = PhaseImagingSystem._random_vector(std)
+            self.image_over_reverse = shift(input=self.image_over_reverse, shift=disp, cval=1.0)
 
     @staticmethod
     def extract_phase_from_wavefield(wave):
