@@ -12,9 +12,11 @@ np.set_printoptions(threshold=10)
 
 h = 6.63e-34  # Planck's constant
 m0 = 9.11e-31  # Electron rest mass
+mu0 = 4 * PI * 10**-7  # Free space permeability
 e = -1.6e-19  # Electron charge
 c = 3e8  # Speed of light
-hbar = h / (2 * PI)
+hbar = h / (2 * PI)  # Reduced Planck constant
+phi0 = h / (2 * e)  # Flux quantum
 
 npmax = 12
 nzmin = 1
@@ -31,7 +33,10 @@ class PhaseImagingSystem(object):
 
     def __init__(self, image_size, defocus, image_width, energy,
                  specimen_file, mip, is_attenuating, noise_level, use_multislice,
-                 multislice_method, M, item, path):
+                 multislice_method, M, item, path, simulation_parameters, specimen_parameters):
+
+        self.simulation_parameters = simulation_parameters
+        self.specimen_parameters = specimen_parameters
 
         # Initialise image/micrograph arrays
         self.image_under = np.zeros(list((image_size, image_size)), dtype=complex)
@@ -41,6 +46,11 @@ class PhaseImagingSystem(object):
         # Initialise phase arrays
         self.phase_exact = np.zeros(list((image_size, image_size)), dtype=complex)
         self.phase_retrieved = np.zeros(list((image_size, image_size)), dtype=complex)
+
+        if specimen_parameters['Use Electrostatic/Magnetic Potential'][0]:
+            self.phase_electrostatic = np.zeros((image_size, image_size), dtype=complex)
+        if specimen_parameters['Use Electrostatic/Magnetic Potential'][1]:
+            self.phase_magnetic = np.zeros((image_size, image_size), dtype=complex)
 
         # Initialise intensity derivative (used for troubleshooting purposes)
         self.derivative = np.zeros(list((image_size, image_size)), dtype=complex)
@@ -66,6 +76,7 @@ class PhaseImagingSystem(object):
             self.mip = mip
         else:
             self.mip = mip.real
+        self.magnetisation = specimen_parameters['Mass Magnetization'] * specimen_parameters['Density'] * 1000  # A/m
 
 
         # Calculate wavelength from electron energy
@@ -76,6 +87,13 @@ class PhaseImagingSystem(object):
         self.specimen = None
         self.specimen_size = None
 
+        # Set regularisation parameters and construct kernels
+        self.reg_tie = 0.1 / (self.image_width * self.image_size)
+        self.reg_image = 0.1
+        self.k_squared_kernel = self._construct_k_squared_kernel()
+        self.inverse_k_squared_kernel = self._construct_inverse_k_squared_kernel()
+        self.k_kernel = self._construct_k_kernel()
+
         if use_multislice and multislice_method == 'files':
 
             self.wave_multislice = self._import_wavefield(path + 'image(' +
@@ -85,19 +103,14 @@ class PhaseImagingSystem(object):
             # Construct specimen from file, project phases, and
             # downsample phase to the system's image size
             self._construct_specimen(specimen_file)
-            self._project_phase(orientation=0)
+            self._project_phase()
 
         while len(self.phase_exact) > image_size:
             self.phase_exact = PhaseImagingSystem._downsample(self.phase_exact)
         while len(self.phase_exact) < image_size:
             self.phase_exact = PhaseImagingSystem._upsample(self.phase_exact)
 
-        # Set regularisation parameters and construct kernels
-        self.reg_tie = 0.1 / (self.image_width * self.image_size)
-        self.reg_image = 0.1
-        self.k_squared_kernel = self._construct_k_squared_kernel()
-        self.inverse_k_squared_kernel = self._construct_inverse_k_squared_kernel()
-        self.k_kernel = self._construct_k_kernel()
+
         if use_multislice:
             if multislice_method == 'files':
                 self.wave_multislice_hr = self._import_wavefield(path + 'image_hr(' +
@@ -2243,11 +2256,11 @@ class PhaseImagingSystem(object):
 
     def _construct_k_kernel(self):
         kernel = np.zeros(list((self.image_size, self.image_size, 2)), dtype=complex)
+        da = 1 / self.image_width
         for i in range(self.image_size):
             for j in range(self.image_size):
                 i0 = i - self.image_size / 2
                 j0 = j - self.image_size / 2
-                da = 1 / self.image_width
                 kernel[i, j, 0] = i0 * da
                 kernel[i, j, 1] = j0 * da
         return kernel
@@ -2291,9 +2304,19 @@ class PhaseImagingSystem(object):
 
         return ds
 
+    def _project_phase(self):
+        if self.specimen_parameters['Use Electrostatic/Magnetic Potential'][0] and \
+                self.specimen_parameters['Use Electrostatic/Magnetic Potential'][1]:
+            self.phase_electrostatic = self._project_electrostatic_phase()
+            self.phase_magnetic = self._project_magnetic_phase()
+            self.phase_exact = self.phase_electrostatic + self.phase_magnetic
+            # self.phase_reverse = self.phase_electrostatic - self.phase_magnetic
+        elif self.specimen_parameters['Use Electrostatic/Magnetic Potential'][0]:
+            self.phase_exact = self._project_electrostatic_phase()
+        elif self.specimen_parameters['Use Electrostatic/Magnetic Potential'][1]:
+            self.phase_exact = self._project_magnetic_phase()
 
-
-    def _project_phase(self, orientation):
+    def _project_electrostatic_phase(self):
         """
         Computes the image plane phase shift of the specimen.
 
@@ -2304,10 +2327,17 @@ class PhaseImagingSystem(object):
         energy = self.energy
         wavelength = self.wavelength
         dz = self.image_width / self.specimen_size
-        self.phase_exact = np.sum(self.specimen,
-                                  axis=orientation) * PI/(energy * wavelength) * self.mip * dz
+        return np.sum(self.specimen,
+                                  axis=0) * PI/(energy * wavelength) * self.mip * dz
 
+    def _project_magnetic_phase(self):
 
+        mhatcrossk_z = np.cross(PhaseImagingSystem.generate_random_axis(), self.k_kernel)[:, :, 2]
+        D0 = fft.fftshift(fft.fftn(self.specimen))[int(self.image_size/2), :, :] * (self.image_width / self.image_size)
+
+        phase = (1j * PI * mu0 * self.magnetisation / phi0) * D0 * self.inverse_k_squared_kernel * mhatcrossk_z
+        phase = fft.ifftshift(phase)
+        return fft.ifft2(phase)
 
     def _set_transfer_function(self, defocus):
         """

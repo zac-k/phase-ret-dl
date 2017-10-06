@@ -116,22 +116,25 @@ hyperparameters = {'Hidden Layer Size': [50000],
                    'Output Type': 'magnetic phase',
                    'Number of Images': 2,
                    'Train with In-focus Image': False,  # False has no effect if n_images == 3
-                   'Train/Valid/Test Split': [1, 0, 1],
+                   'Train/Valid/Test Split': [5, 0, 1],
                    'Batch Size': 50,
                    'Optimiser Type': 'gradient descent',
                    'Learning Rate': 0.5,
                    'Use Convolutional Layers': False,
                    'Number of Epochs': 50,
-                   'Initialisation Type': 'identity'}
+                   'Initialisation Type': 'identity'
+                   }
 # 'Pre-remove Offest' removes the mean difference between the exact and retrieved phases for both
 # the training and test sets. Will not work with experimental images.
 simulation_parameters = {'Pre-remove Offset': False,
                          'Phase Retrieval Method': 'TIE',
                          'Misalignment': [False, False, False],  # rotation, scale, translation
-                         'Rotation/Scale/Shift': [0, 0.04, 0.01],  # Rotation is in degrees
+                         'Rotation/Scale/Shift': [0, 0.04, 0.03],  # Rotation is in degrees
                          'Rotation Mode': 'gaussian',  # 'uniform' or 'gaussian'
                          'Load Model': False,
-                         'Experimental Test Data': False}
+                         'Experimental Test Data': False,
+                         'Retrieve Phase Component': 'magnetic',  # 'total', 'electrostatic', or 'magnetic' todo: implement specimen flipping
+                         }
 imaging_parameters = {'Window Function Radius': 0.5,
                       'Accelerating Voltage': 300,  # electron accelerating voltage in keV
                       'Use Multislice': False,
@@ -144,8 +147,13 @@ imaging_parameters = {'Window Function Radius': 0.5,
                       'Defocus': 10e-6,
                       'Error Limits': [-3, 3],
                       'Phase Limits': [-3, 3],
-                      'Image Limits': [0, 2]}
-specimen_parameters = {'Mean Inner Potential': -17 + 1j}
+                      'Image Limits': [0, 2]
+                      }
+specimen_parameters = {'Use Electrostatic/Magnetic Potential': [True, True],
+                       'Mean Inner Potential': -17 + 1j,
+                       'Mass Magnetization': 80,  # emu/g
+                       'Density': 5.18,# / 1000000000,  # g/cm^3
+                       }
 paths = {'Experimental Data Path': './data/images/experimental/',
          'Image Output Path': './data/figures/',
          'Phase Output Path': './data/figures/',
@@ -158,7 +166,10 @@ paths = {'Experimental Data Path': './data/images/experimental/',
 assert simulation_parameters['Rotation Mode'] in ('gaussian', 'uniform')
 assert simulation_parameters['Phase Retrieval Method'] in ('TIE', 'GS')
 assert hyperparameters['Output Type'] in ('magnetic phase', 'electrostatic phase', 'total phase')
+assert simulation_parameters['Retrieve Phase Component'] in ('total', 'electrostatic', 'magnetic')
 
+
+magnetisation = specimen_parameters['Mass Magnetization'] * specimen_parameters['Density'] * 1000  # A/m
 
 exp_path = paths['Experimental Data Path']
 image_output_path = paths['Image Output Path']
@@ -236,7 +247,9 @@ if not simulation_parameters['Load Model']:
                multislice_method=imaging_parameters['Multislice Method'],
                M=M,
                item=item,
-               path=imaging_parameters['Multislice Wavefield Path'])
+               path=imaging_parameters['Multislice Wavefield Path'],
+               simulation_parameters=simulation_parameters,
+               specimen_parameters=specimen_parameters)
         system_train.generate_images(n_images)
         if simulation_parameters['Misalignment'][0]:
             system_train.rotate_images(std=simulation_parameters['Rotation/Scale/Shift'][0],
@@ -257,7 +270,16 @@ if not simulation_parameters['Load Model']:
 
 
         system_train.apodise_phases(imaging_parameters['Window Function Radius'])
-        phase_exact_flat_train.append(system_train.phase_exact.real.reshape(img_size_flat))
+        if specimen_parameters['Use Electrostatic/Magnetic Potential'][0] and \
+           specimen_parameters['Use Electrostatic/Magnetic Potential'][1]:
+            if simulation_parameters['Retrieve Phase Component'] == 'magnetic':
+                phase_exact_flat_train.append(system_train.phase_magnetic.real.reshape(img_size_flat))
+            elif simulation_parameters['Retrieve Phase Component'] == 'electrostatic':
+                phase_exact_flat_train.append(system_train.phase_electrostatic.real.reshape(img_size_flat))
+            else:
+                phase_exact_flat_train.append(system_train.phase_exact.real.reshape(img_size_flat))
+        else:
+            phase_exact_flat_train.append(system_train.phase_exact.real.reshape(img_size_flat))
         phase_retrieved_flat_train.append(system_train.phase_retrieved.real.reshape(img_size_flat))
 
         if item < n_savefile_sets[0]:
@@ -308,7 +330,9 @@ for item in range(num_train, num_test + num_train):
                                            multislice_method=imaging_parameters['Multislice Method'],
                                            M=M,
                                            item=item,
-                                           path=imaging_parameters['Multislice Wavefield Path'])
+                                           path=imaging_parameters['Multislice Wavefield Path'],
+                                           simulation_parameters=simulation_parameters,
+                                           specimen_parameters=specimen_parameters)
     if simulation_parameters['Experimental Test Data']:
         system_test.image_under = utils.import_micrograph(
             exp_path + 'tims_data_-10um(' + str(item - num_train) + ')', img_size)
@@ -335,7 +359,16 @@ for item in range(num_train, num_test + num_train):
     if simulation_parameters['Pre-remove Offset']:
         system_test.remove_offset()
     system_test.apodise_phases(imaging_parameters['Window Function Radius'])
-    phase_exact_flat_test.append(system_test.phase_exact.real.reshape(img_size_flat))
+    if specimen_parameters['Use Electrostatic/Magnetic Potential'][0] and \
+            specimen_parameters['Use Electrostatic/Magnetic Potential'][1]:
+        if simulation_parameters['Retrieve Phase Component'] == 'magnetic':
+            phase_exact_flat_test.append(system_test.phase_magnetic.real.reshape(img_size_flat))
+        elif simulation_parameters['Retrieve Phase Component'] == 'electrostatic':
+            phase_exact_flat_test.append(system_test.phase_electrostatic.real.reshape(img_size_flat))
+        else:
+            phase_exact_flat_test.append(system_test.phase_exact.real.reshape(img_size_flat))
+    else:
+        phase_exact_flat_test.append(system_test.phase_exact.real.reshape(img_size_flat))
     phase_retrieved_flat_test.append(system_test.phase_retrieved.real.reshape(img_size_flat))
     if item < n_savefile_sets[2] + num_train:
         plot.save_image(system_test.image_under,
