@@ -2532,7 +2532,13 @@ class PhaseImagingSystem(object):
         self.phase_retrieved = self.apodise(self.phase_retrieved, rad_sup)
 
     def remove_offset(self):
-        offset = self.phase_retrieved - self.phase_exact
+        if self.flipping:
+            if self.simulation_parameters['Retrieve Phase Component'] == 'electrostatic':
+                offset = self.phase_retrieved - self.phase_electrostatic
+            elif self.simulation_parameters['Retrieve Phase Component'] == 'magnetic':
+                offset = self.phase_retrieved - self.phase_magnetic
+        else:
+            offset = self.phase_retrieved - self.phase_exact
         offset_avg = np.mean(np.mean(offset))
         self.phase_retrieved = self.phase_retrieved - offset_avg
 

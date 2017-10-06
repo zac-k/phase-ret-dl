@@ -126,7 +126,7 @@ hyperparameters = {'Hidden Layer Size': [50000],
                    }
 # 'Pre-remove Offest' removes the mean difference between the exact and retrieved phases for both
 # the training and test sets. Will not work with experimental images.
-simulation_parameters = {'Pre-remove Offset': False,
+simulation_parameters = {'Pre-remove Offset': True,
                          'Phase Retrieval Method': 'TIE',
                          'Misalignment': [False, False, False],  # rotation, scale, translation
                          'Rotation/Scale/Shift': [0, 0.04, 0.03],  # Rotation is in degrees
@@ -143,7 +143,7 @@ imaging_parameters = {'Window Function Radius': 0.5,
                       'Image Size in Pixels': 64,
                       'Multislice Resolution in Pixels': 1024,
                       'Domain Size': 150e-9,  # Width of images in metres
-                      'Noise Level': 0.05,
+                      'Noise Level': 0.00,
                       'Defocus': 10e-6,
                       'Error Limits': [-3, 3],
                       'Phase Limits': [-3, 3],
