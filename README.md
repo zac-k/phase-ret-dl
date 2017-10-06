@@ -110,6 +110,10 @@ How to initialise the weights and biases. `'identity'` is sufficient for most pu
 
 Boolean. If `True`, removes the mean error from training and test retrieved phases. Used for removing this source of error so that other sources can be studied independently. A more rigorous way of doing this would be to compute the mean error only over an annulus, so that the offset is computed as the average difference between the unaltered (free-space) phase. This may be implemented in future versions.
 
+### 'Phase Retrieval Method'
+
+Either 'TIE' (transport-of-intensity equation) or 'GS' (Gerchberg-Saxton-Misell). The latter has been implemented, but I'm not sure if it's working yet. It may just be a matter of choosing appropriate parameters to get it to work properly. 
+
 ### 'Misalignment'
 
 Three element list of booleans. Tells the ANN whether to use random variations in rotation, scaling, and translation, respectively. Without loss of generality, one image in each through-focal series can be left unaltered to act as a reference against which to compare the exact phase. In three image mode, the reference image is the in-focus image. In two image mode, it is the under-focus image. 
@@ -129,6 +133,10 @@ Boolean. If `True`, loads the model from files saved by previous simulations, ne
 ### 'Experimental Test Data'
 
 Boolean. If `True`, loads the test images from experimental data. The filenames of specific images are currently hard-coded into the program, and will need to be changed for specific use cases.
+
+### 'Retrieve Phase Component'
+
+Set to 'total', 'electrostatic', or 'magnetic'. Component of the phase that is used for training, phase retrieval, and error determination.
 
 ## imaging_parameters
 
@@ -187,9 +195,21 @@ Two element dict containing the maximum and minimum intensity values for the int
 
 ## specimen_parameters
 
+### 'Use Electrostatic/Magnetic Potential'
+
+Two element boolean list. Determines which components of the phase to utilise in the simulation. If only one of these is True, the exact phase is set to that phase. If both are True, the exact phase is the combined phase, and specimen flipping is implemented to separate the phases if simulation_parameters['Retrieve Phase Component'] is set to 'electrostatic' or 'magnetic'.
+
 ### 'Mean Inner Potential'
 
 Complex float. The real part is the mean inner potential in volts (~-17 for magnetite), and the imaginary part is related to absorption coefficient. A reasonable value for this is around `1j`.
+
+### 'Mass Magnetization'
+
+Uniform mass magnetization of the specimen in emu/g (80 for magnetite).
+
+### 'Density'
+
+Uniform density of the specimen in g/cm^3 (5.18 for magnetite).
 
 ## Paths
 
@@ -237,14 +257,17 @@ Because I am often testing out fringe cases, while at the same time working on i
                        'Learning Rate': 0.5,
                        'Use Convolutional Layers': False,
                        'Number of Epochs': 50,
-                       'Initialisation Type': 'identity'}
+                       'Initialisation Type': 'identity'
+                       }
                         
     simulation_parameters = {'Pre-remove Offset': False,
                              'Misalignment': [True, True, True],  # rotation, scale, translation
                              'Rotation/Scale/Shift': [3, 0.02, 0.01],  # Rotation is in degrees
                              'Rotation Mode': 'gaussian',  # 'uniform' or 'gaussian'
                              'Load Model': False,
-                             'Experimental Test Data': False}
+                             'Experimental Test Data': False,
+                             'Retrieve Phase Component': 'total',  # 'total', 'electrostatic', or 'magnetic'
+                             }
                              
     imaging_parameters = {'Window Function Radius': 0.5,
                           'Accelerating Voltage': 300,  # electron accelerating voltage in keV
@@ -258,9 +281,14 @@ Because I am often testing out fringe cases, while at the same time working on i
                           'Defocus': 10e-6,
                           'Error Limits': [-3, 3],
                           'Phase Limits': [-3, 3],
-                          'Image Limits': [0, 2]}
+                          'Image Limits': [0, 2]
+                          }
                           
-    specimen_parameters = {'Mean Inner Potential': -17 + 1j}
+    specimen_parameters = {'Use Electrostatic/Magnetic Potential': [True, False],
+                           'Mean Inner Potential': -17 + 1j,
+                           'Mass Magnetization': 80,  # emu/g
+                           'Density': 5.18  # g/cm^3
+                           }
     
     paths = {'Experimental Data Path': './data/images/experimental/',
              'Image Output Path': './data/images/',
