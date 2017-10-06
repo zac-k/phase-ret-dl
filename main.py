@@ -116,7 +116,7 @@ hyperparameters = {'Hidden Layer Size': [50000],
                    'Output Type': 'magnetic phase',
                    'Number of Images': 2,
                    'Train with In-focus Image': False,  # False has no effect if n_images == 3
-                   'Train/Valid/Test Split': [5, 0, 1],
+                   'Train/Valid/Test Split': [50, 0, 1],
                    'Batch Size': 50,
                    'Optimiser Type': 'gradient descent',
                    'Learning Rate': 0.5,
@@ -133,8 +133,8 @@ simulation_parameters = {'Pre-remove Offset': False,
                          'Rotation Mode': 'gaussian',  # 'uniform' or 'gaussian'
                          'Load Model': False,
                          'Experimental Test Data': False,
-                         'Retrieve Phase Component': 'magnetic',  # 'total', 'electrostatic', or 'magnetic' todo: implement specimen flipping
-                         }
+                         'Retrieve Phase Component': 'total',  # 'total', 'electrostatic', or 'magnetic'
+                         }  # todo: implement rot/scale/shift variations for reverse micrographs
 imaging_parameters = {'Window Function Radius': 0.5,
                       'Accelerating Voltage': 300,  # electron accelerating voltage in keV
                       'Use Multislice': False,
@@ -143,7 +143,7 @@ imaging_parameters = {'Window Function Radius': 0.5,
                       'Image Size in Pixels': 64,
                       'Multislice Resolution in Pixels': 1024,
                       'Domain Size': 150e-9,  # Width of images in metres
-                      'Noise Level': 0.00,
+                      'Noise Level': 0.05,
                       'Defocus': 10e-6,
                       'Error Limits': [-3, 3],
                       'Phase Limits': [-3, 3],

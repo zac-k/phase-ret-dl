@@ -38,14 +38,26 @@ class PhaseImagingSystem(object):
         self.simulation_parameters = simulation_parameters
         self.specimen_parameters = specimen_parameters
 
+        self.flipping = False
+        if specimen_parameters['Use Electrostatic/Magnetic Potential'][0] and \
+                specimen_parameters['Use Electrostatic/Magnetic Potential'][1]:
+            if simulation_parameters['Retrieve Phase Component'] != 'total':
+                self.flipping = True
         # Initialise image/micrograph arrays
         self.image_under = np.zeros(list((image_size, image_size)), dtype=complex)
         self.image_over = np.zeros(list((image_size, image_size)), dtype=complex)
         self.image_in = np.zeros(list((image_size, image_size)), dtype=complex)
+        if self.flipping:
+            self.image_under_reverse = np.zeros(list((image_size, image_size)), dtype=complex)
+            self.image_over_reverse = np.zeros(list((image_size, image_size)), dtype=complex)
+            self.image_in_reverse = np.zeros(list((image_size, image_size)), dtype=complex)
+
 
         # Initialise phase arrays
         self.phase_exact = np.zeros(list((image_size, image_size)), dtype=complex)
         self.phase_retrieved = np.zeros(list((image_size, image_size)), dtype=complex)
+        if self.flipping:
+            self.phase_reverse = np.zeros(list((image_size, image_size)), dtype=complex)
 
         if specimen_parameters['Use Electrostatic/Magnetic Potential'][0]:
             self.phase_electrostatic = np.zeros((image_size, image_size), dtype=complex)
@@ -178,6 +190,7 @@ class PhaseImagingSystem(object):
         elif mode == 'gaussian':
             angle = np.random.normal(scale=std)
         self.image_over = rotate(input=self.image_over, angle=angle, reshape=False, cval=1.0)
+
 
     def scale_images(self, std, n_images):
         if n_images == 3:
@@ -2310,7 +2323,8 @@ class PhaseImagingSystem(object):
             self.phase_electrostatic = self._project_electrostatic_phase()
             self.phase_magnetic = self._project_magnetic_phase()
             self.phase_exact = self.phase_electrostatic + self.phase_magnetic
-            # self.phase_reverse = self.phase_electrostatic - self.phase_magnetic
+            if self.flipping:
+                self.phase_reverse = self.phase_electrostatic - self.phase_magnetic
         elif self.specimen_parameters['Use Electrostatic/Magnetic Potential'][0]:
             self.phase_exact = self._project_electrostatic_phase()
         elif self.specimen_parameters['Use Electrostatic/Magnetic Potential'][1]:
@@ -2393,13 +2407,38 @@ class PhaseImagingSystem(object):
             self.image_under = PhaseImagingSystem._downsample(self.image_under)
         while len(self.image_over) > self.image_size:
             self.image_over = PhaseImagingSystem._downsample(self.image_over)
+        if self.flipping:
+            if self.use_multislice:
+                wavefunction = self.wave_multislice_hr
+            else:
+                wavefunction = np.exp(1j * self.phase_reverse)
+            self.image_over_reverse = self._transfer_image(defocus=self.defocus, wavefunction=wavefunction, image=True)
+            self.image_under_reverse = self._transfer_image(defocus=-self.defocus, wavefunction=wavefunction, image=True)
+            if n_images == 3:
+                self.image_in_reverse = self._transfer_image(defocus=0, wavefunction=wavefunction, image=True)
+                while len(self.image_in_reverse) > self.image_size:
+                    self.image_in_reverse = PhaseImagingSystem._downsample(self.image_in_reverse)
+            while len(self.image_under_reverse) > self.image_size:
+                self.image_under_reverse = PhaseImagingSystem._downsample(self.image_under_reverse)
+            while len(self.image_over) > self.image_size:
+                self.image_over_reverse = PhaseImagingSystem._downsample(self.image_over_reverse)
         return
 
     def approximate_in_focus(self):
         self.image_in = (self.image_over + self.image_under) / 2
+        if self.flipping:
+            self.image_in_reverse = (self.image_over_reverse + self.image_under_reverse) / 2
 
     def add_noise_to_micrographs(self):
-        images = [self.image_under,
+        if self.flipping:
+            images = [self.image_under,
+                      self.image_in,
+                      self.image_over,
+                      self.image_under_reverse,
+                      self.image_in_reverse,
+                      self.image_over_reverse]
+        else:
+            images = [self.image_under,
                   self.image_in,
                   self.image_over]
         if self.noise_level != 0:
@@ -2431,8 +2470,11 @@ class PhaseImagingSystem(object):
         image = fft.ifft2(image)
         return image
 
-    def intensity_derivative(self):
-        return (self.image_under - self.image_over) / (2 * self.defocus)
+    def intensity_derivative(self, dir):
+        if dir == 'forward':
+            return (self.image_under - self.image_over) / (2 * self.defocus)
+        elif dir == 'reverse':
+            return (self.image_under_reverse - self.image_over_reverse) / (2 * self.defocus)
 
     @staticmethod
     def regularise_and_invert(kernel, reg):
@@ -2446,9 +2488,15 @@ class PhaseImagingSystem(object):
         self.image_under = self.apodise(self.image_under, rad_sup)
         self.image_in = self.apodise(self.image_in, rad_sup)
         self.image_over = self.apodise(self.image_over, rad_sup)
+        if self.flipping:
+            self.image_under_reverse = self.apodise(self.image_under_reverse, rad_sup)
+            self.image_in_reverse = self.apodise(self.image_in_reverse, rad_sup)
+            self.image_over_reverse = self.apodise(self.image_over_reverse, rad_sup)
 
     def apodise_phases(self, rad_sup):
         self.phase_exact = self.apodise(self.phase_exact, rad_sup)
+        if self.flipping:
+            self.phase_reverse = self.apodise(self.phase_reverse, rad_sup)
         self.phase_retrieved = self.apodise(self.phase_retrieved, rad_sup)
 
     def remove_offset(self):
@@ -2512,7 +2560,7 @@ class PhaseImagingSystem(object):
             regularised_inverse_intensity = self.image_in / (self.image_in * self.image_in
                                                              + self.reg_image * self.reg_image)
             prefactor = (1. / self.wavelength) / (2. * PI)
-            derivative = self.intensity_derivative()
+            derivative = self.intensity_derivative('forward')
             self.derivative = derivative
             derivative_vec = np.zeros(list((self.image_size, self.image_size, 2)), dtype=complex)
             derivative_vec[:, :, 0] = self.convolve(derivative, self.k_kernel[:, :, 0] *
@@ -2526,14 +2574,47 @@ class PhaseImagingSystem(object):
             derivative_vec[:, :, 1] = fft.fftshift(fft.fft2(derivative_vec[:, :, 1]))
             derivative = self.dot_fields(self.k_kernel, derivative_vec) * self.inverse_k_squared_kernel
             self.phase_retrieved = prefactor * fft.ifft2(fft.ifftshift(derivative))
-            return
+
 
         else:
             prefactor = (1. / self.wavelength) / (2 * PI * self.image_intensity)
 
-            filtered = self.convolve(self.intensity_derivative(),
+            filtered = self.convolve(self.intensity_derivative('forward'),
                                      self.inverse_k_squared_kernel)
             self.phase_retrieved = prefactor * filtered
+        if self.flipping:
+            if self.is_attenuating:
+                regularised_inverse_intensity = self.image_in_reverse / (self.image_in_reverse * self.image_in_reverse
+                                                                 + self.reg_image * self.reg_image)
+                prefactor = (1. / self.wavelength) / (2. * PI)
+                derivative = self.intensity_derivative('reverse')
+                self.derivative = derivative
+                derivative_vec = np.zeros(list((self.image_size, self.image_size, 2)), dtype=complex)
+                derivative_vec[:, :, 0] = self.convolve(derivative, self.k_kernel[:, :, 0] *
+                                                        self.inverse_k_squared_kernel
+                                                        ) * regularised_inverse_intensity
+                derivative_vec[:, :, 1] = self.convolve(derivative, self.k_kernel[:, :, 1] *
+                                                        self.inverse_k_squared_kernel
+                                                        ) * regularised_inverse_intensity
+
+                derivative_vec[:, :, 0] = fft.fftshift(fft.fft2(derivative_vec[:, :, 0]))
+                derivative_vec[:, :, 1] = fft.fftshift(fft.fft2(derivative_vec[:, :, 1]))
+                derivative = self.dot_fields(self.k_kernel, derivative_vec) * self.inverse_k_squared_kernel
+                if self.simulation_parameters['Retrieve Phase Component'] == 'magnetic':
+                    self.phase_retrieved = (self.phase_retrieved - prefactor * fft.ifft2(fft.ifftshift(derivative))) / 2
+                elif self.simulation_parameters['Retrieve Phase Component'] == 'electrostatic':
+                    self.phase_retrieved = (self.phase_retrieved + prefactor * fft.ifft2(fft.ifftshift(derivative))) / 2
+
+
+            else:
+                prefactor = (1. / self.wavelength) / (2 * PI * self.image_intensity)
+
+                filtered = self.convolve(self.intensity_derivative('reverse'),
+                                         self.inverse_k_squared_kernel)
+                if self.simulation_parameters['Retrieve Phase Component'] == 'magnetic':
+                    self.phase_retrieved = (self.phase_retrieved - prefactor * filtered) / 2
+                elif self.simulation_parameters['Retrieve Phase Component'] == 'electrostatic':
+                    self.phase_retrieved = (self.phase_retrieved + prefactor * filtered) / 2
         return
 
 
