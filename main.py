@@ -111,15 +111,15 @@ np.set_printoptions(threshold=np.inf)
 # micrographs. If number of images == 2, 'Train with In-focus Image' uses the approximated
 # image for training, and processing the test images, otherwise they are only used for
 # the TIE.
-hyperparameters = {'Hidden Layer Size': [50000],
+hyperparameters = {'Hidden Layer Size': [4096, 10000, 10000, 10000, 4096],
                    'Input Type': 'images',
-                   'Output Type': 'magnetic phase',
                    'Number of Images': 2,
                    'Train with In-focus Image': False,  # False has no effect if n_images == 3
-                   'Train/Valid/Test Split': [50, 0, 1],
+                   'Train/Valid/Test Split': [5, 0, 1],
                    'Batch Size': 50,
                    'Optimiser Type': 'gradient descent',
                    'Learning Rate': 0.5,
+                   'Activation Functions': [tf.nn.tanh, tf.nn.relu, None, tf.nn.sigmoid, tf.nn.tanh],
                    'Use Convolutional Layers': False,
                    'Number of Epochs': 50,
                    'Initialisation Type': 'identity'
@@ -133,7 +133,7 @@ simulation_parameters = {'Pre-remove Offset': True,
                          'Rotation Mode': 'gaussian',  # 'uniform' or 'gaussian'
                          'Load Model': False,
                          'Experimental Test Data': False,
-                         'Retrieve Phase Component': 'total',  # 'total', 'electrostatic', or 'magnetic'
+                         'Retrieve Phase Component': 'magnetic',  # 'total', 'electrostatic', or 'magnetic'
                          }
 imaging_parameters = {'Window Function Radius': 0.5,
                       'Accelerating Voltage': 300,  # electron accelerating voltage in keV
@@ -152,7 +152,7 @@ imaging_parameters = {'Window Function Radius': 0.5,
 specimen_parameters = {'Use Electrostatic/Magnetic Potential': [True, True],
                        'Mean Inner Potential': -17 + 1j,
                        'Mass Magnetization': 80,  # emu/g
-                       'Density': 5.18,# / 1000000000,  # g/cm^3
+                       'Density': 5.18  # g/cm^3
                        }
 paths = {'Experimental Data Path': './data/images/experimental/',
          'Image Output Path': './data/figures/',
@@ -165,9 +165,8 @@ paths = {'Experimental Data Path': './data/images/experimental/',
 
 assert simulation_parameters['Rotation Mode'] in ('gaussian', 'uniform')
 assert simulation_parameters['Phase Retrieval Method'] in ('TIE', 'GS')
-assert hyperparameters['Output Type'] in ('magnetic phase', 'electrostatic phase', 'total phase')
 assert simulation_parameters['Retrieve Phase Component'] in ('total', 'electrostatic', 'magnetic')
-
+assert len(hyperparameters['Hidden Layer Size']) == len(hyperparameters['Activation Functions'])
 
 magnetisation = specimen_parameters['Mass Magnetization'] * specimen_parameters['Density'] * 1000  # A/m
 
@@ -447,7 +446,7 @@ for i in range(num_hidden_layers):
     hidden_layers[i] = new_fc_layer(hidden_input,
                                     hidden_input_size,
                                     hidden_layer_size[i],
-                                    activation_function=tf.nn.tanh,
+                                    activation_function=hyperparameters['Activation Functions'][i],
                                     init_type=hyperparameters['Initialisation Type'])
 
 if num_hidden_layers == 0:
