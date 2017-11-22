@@ -29,7 +29,7 @@ Phase retrieval using deep learning (phase-ret-dl)
 
 # Introduction
 
-This project uses supervised learning to train a neural network on simulated electron micrographs or retrieved phases. This requires a large volume of training data (A minimum of ~5000 examples), which is only feasible if the specimens are procedurally generated. See my repository [random-specimen-generator](https://github.com/zac-k/random-specimen-generator), which contains a python script that uses the Blender API to procedurally generate specimen files that are compatible with this program.
+This project uses supervised learning to train a neural network on simulated electron micrographs or retrieved phases. This requires a large volume of training data (A minimum of ~5000 examples), which is only feasible if the specimens are procedurally generated. See my repository [specimen-generator](https://github.com/zac-k/specimen-generator), which contains a python script that uses the Blender API to procedurally generate specimen files that are compatible with this program.
 
 A phase imaging system class, which simulates out-of-focus images using the projection approximation, and retrieves the phase using a FFT solution to the transport-of-intensity equation is used to train, and test, an artificial neural network (ANN), which is implemented using tensorflow 1.2.1.
 
