@@ -405,9 +405,9 @@ class PhaseImagingSystem(object):
 
                             loc[0] = -aA / 2 + float(t1) * Sc[0] + \
                                      atom_locations[atom + element * atomic_numbers[0][1]][0]
-                            loc[1] = -aA / 2 + float(t1) * Sc[1] + \
+                            loc[1] = -aA / 2 + float(t2) * Sc[1] + \
                                      atom_locations[atom + element * atomic_numbers[0][1]][1]
-                            loc[2] = -aA / 2 + float(t1) * Sc[2] + \
+                            loc[2] = -aA / 2 + float(t3) * Sc[2] + \
                                      atom_locations[atom + element * atomic_numbers[0][1]][2]
                             i = int(np.floor(loc[0] * M / aA + M / 2))
                             j = int(np.floor(loc[1] * M / aA + M / 2))
