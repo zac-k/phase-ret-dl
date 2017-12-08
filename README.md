@@ -150,7 +150,7 @@ Electron accelerating voltage in keV; e.g., `200`, `300`, etc.
 
 ### 'Use Multislice'
 
-Boolean. Whether to use the multislice method for image simulation. The projection approximation is still used to generate projected potentials used as the 'exact phase'.
+Boolean. Whether to use the multislice method for image simulation. The projection approximation is still used to generate projected potentials used as the 'exact phase'. IMPORTANT: The multislice method is not currently working! I am working on it in my [phaseimaging](https://github.com/zac-k/phaseimaging) library. When it is complete, I will remove all the multislice code from this project and import the relevant functions from that library.
 
 ### 'Multislice Method'
 

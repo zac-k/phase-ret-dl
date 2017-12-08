@@ -2106,6 +2106,10 @@ class PhaseImagingSystem(object):
     def project_phase_ms(self, axis, angle):
 
         """
+        WARNING. This function is not working at all. It is being worked on in my phaseimaging library, which
+        will be used here when it is finished.
+
+
         Multislice simulation method
         Note that this code is based on the theory described in
         "Advanced Computing in Electrons Microscopy" (Plenum 1998, Springer 2010) by Earl J. Kirkland,
