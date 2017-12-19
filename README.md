@@ -311,7 +311,7 @@ PhaseImagingSystem class. Simulates out-of-focus electron micrographs using the 
 This file also contains methods to retrieve the phase, using the TIE, from the out-of-focus micrographs, and includes relevant methods such as those for downsampling.
 
 
-<sup>1. The multislice method is a python implementation of [E. J. Kirkland's C code](http://people.ccmr.cornell.edu/~kirkland/), but runs extremely slowly. The code needs to be vectorised to make it run fast enough to use; this is not straightforward.</sup>
+<sup>1. The multislice method is a python implementation of [E. J. Kirkland's C code](http://people.ccmr.cornell.edu/~kirkland/), but is not working at the moment. I am correcting the mistakes in my [phaseimaging](https://github.com/zac-k/phaseimaging) library, as well as optimising it to run faster in python. Please do not use the multislice functionality in the present repository. It will soon be removed and replaced with calls to the aforementioned phaseimaging library.</sup>
 
 ## [plot.py](https://github.com/zac-k/phase-ret-dl/blob/master/plot.py)
 
