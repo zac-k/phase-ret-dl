@@ -255,12 +255,14 @@ Because I am often testing out fringe cases, while at the same time working on i
                        'Batch Size': 50,
                        'Optimiser Type': 'gradient descent',
                        'Learning Rate': 0.5,
+                       'Activation Functions': [tf.nn.tanh, tf.nn.relu, None, tf.nn.sigmoid, tf.nn.tanh],
                        'Use Convolutional Layers': False,
                        'Number of Epochs': 50,
                        'Initialisation Type': 'identity'
                        }
                         
     simulation_parameters = {'Pre-remove Offset': False,
+                             'Phase Retrieval Method': 'TIE',
                              'Misalignment': [True, True, True],  # rotation, scale, translation
                              'Rotation/Scale/Shift': [3, 0.02, 0.01],  # Rotation is in degrees
                              'Rotation Mode': 'gaussian',  # 'uniform' or 'gaussian'
