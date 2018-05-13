@@ -130,8 +130,8 @@ hyperparameters = {'Hidden Layer Size': [50000],
 simulation_parameters = {'Pre-remove Offset': False,
                          'Phase Retrieval Method': 'TIE',
                          'Misalignment': [True, True, True],  # rotation, scale, translation
-                         'Rotation/Scale/Shift': [42, 0.05, 0.01],  # Rotation is in degrees
-                         'Rotation Mode': 'gaussian',  # 'uniform' or 'gaussian'
+                         'Rotation/Scale/Shift': [360, 0.03, 0.03],  # Rotation is in degrees
+                         'Rotation Mode': 'uniform',  # 'uniform' or 'gaussian'
                          'Load Model': False,
                          'Experimental Test Data': False,
                          'Retrieve Phase Component': 'magnetic',  # 'total', 'electrostatic', or 'magnetic'
@@ -144,7 +144,7 @@ imaging_parameters = {'Window Function Radius': 0.5,
                       'Image Size in Pixels': 64,
                       'Multislice Resolution in Pixels': 1024,
                       'Domain Size': 150e-9,  # Width of images in metres
-                      'Noise Level': 0.00,
+                      'Noise Level': [0.00, 0.05],
                       'Defocus': 10e-6,
                       'Error Limits': [-3, 3],
                       'Phase Limits': [-3, 3],
@@ -233,6 +233,7 @@ if not simulation_parameters['Load Model']:
     print('Generating training data...')
     train_generate_bar = pyprind.ProgBar(num_train, stream=sys.stdout)
     for item in range(num_train):
+        local_noise_level = np.random.uniform(noise_level[0], noise_level[1])
         train_generate_bar.update()
         specimen_file = specimen_files[np.random.randint(len(specimen_files))]
         system_train = phase.PhaseImagingSystem(
@@ -243,7 +244,7 @@ if not simulation_parameters['Load Model']:
                specimen_file=specimen_files[item],
                mip=mip,
                is_attenuating=True,
-               noise_level=noise_level,
+               noise_level=local_noise_level,
                use_multislice=use_multislice,
                multislice_method=imaging_parameters['Multislice Method'],
                M=M,
@@ -306,7 +307,7 @@ if not simulation_parameters['Load Model']:
             train_details_file.write("Shift: {0: .1%}, {1: .1%}".format(shift[0]/img_size, shift[1]/img_size) + '\n')
         else:
             train_details_file.write("Shift: NA" + '\n')
-
+        train_details_file.write("Noise: {0: .1%}".format(local_noise_level) + '\n')
         if input_type == 'images':
             if n_images == 3 or hyperparameters['Train with In-focus Image']:
                 image_flat_train.append(np.concatenate((system_train.image_under.real.reshape(img_size_flat),
@@ -332,6 +333,7 @@ print("Generating test data...")
 test_generate_bar = pyprind.ProgBar(num_test, stream=sys.stdout)
 for item in range(num_train, num_test + num_train):
     test_generate_bar.update()
+    local_noise_level = np.random.uniform(noise_level[0], noise_level[1])
     system_test = phase.PhaseImagingSystem(image_size=img_size,
                                            defocus=imaging_parameters['Defocus'],
                                            image_width=imaging_parameters['Domain Size'],
@@ -339,7 +341,7 @@ for item in range(num_train, num_test + num_train):
                                            specimen_file=specimen_files[item],
                                            mip=mip,
                                            is_attenuating=True,
-                                           noise_level=noise_level,
+                                           noise_level=local_noise_level,
                                            use_multislice=use_multislice,
                                            multislice_method=imaging_parameters['Multislice Method'],
                                            M=M,
@@ -408,6 +410,7 @@ for item in range(num_train, num_test + num_train):
         test_details_file.write("Shift: {0: .1%}, {1: .1%}".format(shift[0]/img_size, shift[1]/img_size) + '\n')
     else:
         test_details_file.write("Shift: NA" + '\n')
+    test_details_file.write("Noise: {0: .1%}".format(local_noise_level) + '\n')
 
     if input_type == 'images':
         if n_images == 3 or hyperparameters['Train with In-focus Image']:
