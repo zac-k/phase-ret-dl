@@ -149,7 +149,7 @@ class PhaseImagingSystem(object):
         # dimension, so instead we create a tuple of zoom factors, one per array
         # dimension, with 1's for any trailing dimensions after the width and height.
         zoom_tuple = (zoom_factor,) * 2 + (1,) * (img.ndim - 2)
-
+        print(zoom_factor)
         # zooming out
         if zoom_factor < 1:
             zh = int(np.round(zoom_factor * h))
@@ -168,7 +168,9 @@ class PhaseImagingSystem(object):
             zw = int(np.round(w / zoom_factor))
             top = (h - zh) // 2
             left = (w - zw) // 2
-            out = zoom(img[top:top + zh, left:left + zw], zoom_tuple, **kwargs)
+            
+            out = zoom(img[top:top + zh +1, left:left + zw + 1], zoom_tuple, **kwargs)
+
             # `out` might still be slightly larger than `img` due to rounding, so
             # trim off any extra pixels at the edges
             trim_top = ((out.shape[0] - h) // 2)
