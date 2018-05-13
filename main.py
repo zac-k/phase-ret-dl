@@ -7,6 +7,7 @@ from plot import show
 import plot
 import phase
 import pandas as pd
+import pathlib
 
 # Thanks to Hvass-Labs' TensorFlow tutorials (https://github.com/Hvass-Labs/TensorFlow-Tutorials),
 # upon which much of this work is based
@@ -111,25 +112,25 @@ np.set_printoptions(threshold=np.inf)
 # micrographs. If number of images == 2, 'Train with In-focus Image' uses the approximated
 # image for training, and processing the test images, otherwise they are only used for
 # the TIE.
-hyperparameters = {'Hidden Layer Size': [4096, 10000, 10000, 10000, 4096],
+hyperparameters = {'Hidden Layer Size': [50000],
                    'Input Type': 'images',
                    'Number of Images': 2,
                    'Train with In-focus Image': False,  # False has no effect if n_images == 3
-                   'Train/Valid/Test Split': [5, 0, 1],
+                   'Train/Valid/Test Split': [10, 0, 10],
                    'Batch Size': 50,
                    'Optimiser Type': 'gradient descent',
                    'Learning Rate': 0.5,
-                   'Activation Functions': [tf.nn.tanh, tf.nn.relu, None, tf.nn.sigmoid, tf.nn.tanh],
+                   'Activation Functions': [tf.nn.tanh],
                    'Use Convolutional Layers': False,
                    'Number of Epochs': 50,
                    'Initialisation Type': 'identity'
                    }
 # 'Pre-remove Offest' removes the mean difference between the exact and retrieved phases for both
 # the training and test sets. Will not work with experimental images.
-simulation_parameters = {'Pre-remove Offset': True,
+simulation_parameters = {'Pre-remove Offset': False,
                          'Phase Retrieval Method': 'TIE',
-                         'Misalignment': [False, False, False],  # rotation, scale, translation
-                         'Rotation/Scale/Shift': [0, 0.04, 0.03],  # Rotation is in degrees
+                         'Misalignment': [True, True, True],  # rotation, scale, translation
+                         'Rotation/Scale/Shift': [42, 0.05, 0.01],  # Rotation is in degrees
                          'Rotation Mode': 'gaussian',  # 'uniform' or 'gaussian'
                          'Load Model': False,
                          'Experimental Test Data': False,
@@ -149,7 +150,7 @@ imaging_parameters = {'Window Function Radius': 0.5,
                       'Phase Limits': [-3, 3],
                       'Image Limits': [0, 2]
                       }
-specimen_parameters = {'Use Electrostatic/Magnetic Potential': [True, True],
+specimen_parameters = {'Use Electrostatic/Magnetic Potential': [True, False],
                        'Mean Inner Potential': -17 + 1j,
                        'Mass Magnetization': 80,  # emu/g
                        'Density': 5.18  # g/cm^3
@@ -160,9 +161,10 @@ paths = {'Experimental Data Path': './data/images/experimental/',
          'Error Output Path': './data/figures/',
          'Load Model Path': './data/figures/',
          'Save Model Path': './data/figures/',
-         'Specimen Input Path': './data/specimens/training4/'}
+         'Specimen Input Path': './data/specimens/training4/',
+         'Details Output Path': './data/figures/details/'}
 
-
+pathlib.Path(paths['Details Output Path']).mkdir(parents=True, exist_ok=True)
 assert simulation_parameters['Rotation Mode'] in ('gaussian', 'uniform')
 assert simulation_parameters['Phase Retrieval Method'] in ('TIE', 'GS')
 assert simulation_parameters['Retrieve Phase Component'] in ('total', 'electrostatic', 'magnetic')
@@ -251,14 +253,14 @@ if not simulation_parameters['Load Model']:
                specimen_parameters=specimen_parameters)
         system_train.generate_images(n_images)
         if simulation_parameters['Misalignment'][0]:
-            system_train.rotate_images(std=simulation_parameters['Rotation/Scale/Shift'][0],
+            rot = system_train.rotate_images(std=simulation_parameters['Rotation/Scale/Shift'][0],
                                        mode=simulation_parameters['Rotation Mode'],
                                        n_images=n_images)
         if simulation_parameters['Misalignment'][1]:
-            system_train.scale_images(simulation_parameters['Rotation/Scale/Shift'][1],
+            scale = system_train.scale_images(simulation_parameters['Rotation/Scale/Shift'][1],
                                       n_images=n_images)
         if simulation_parameters['Misalignment'][2]:
-            system_train.shift_images(std=img_size*simulation_parameters['Rotation/Scale/Shift'][2],
+            shift = system_train.shift_images(std=img_size*simulation_parameters['Rotation/Scale/Shift'][2],
                                       n_images=n_images)
         system_train.approximate_in_focus()
         system_train.add_noise_to_micrographs()
@@ -291,6 +293,19 @@ if not simulation_parameters['Load Model']:
             plot.save_image(system_train.image_over,
                             image_output_path + 'image_train_over_' + str(item) + '.png',
                         imaging_parameters['Image Limits'])
+        train_details_file = open(paths['Details Output Path'] + 'train_' + str(item) + '.txt', 'w')
+        if simulation_parameters['Misalignment'][0]:
+            train_details_file.write("Rotation: {0: .1f}".format(rot) + '\n')
+        else:
+            train_details_file.write("Rotation: NA" + '\n')
+        if simulation_parameters['Misalignment'][1]:
+            train_details_file.write("Scale: {0: .1%}".format(scale-1) + '\n')
+        else:
+            train_details_file.write("Scale: NA" + '\n')
+        if simulation_parameters['Misalignment'][2]:
+            train_details_file.write("Shift: {0: .1%}, {1: .1%}".format(shift[0]/img_size, shift[1]/img_size) + '\n')
+        else:
+            train_details_file.write("Shift: NA" + '\n')
 
         if input_type == 'images':
             if n_images == 3 or hyperparameters['Train with In-focus Image']:
@@ -379,6 +394,21 @@ for item in range(num_train, num_test + num_train):
         plot.save_image(system_test.image_over,
                         image_output_path + 'image_test_over_' + str(item - num_train) + '.png',
                     imaging_parameters['Image Limits'])
+
+    test_details_file = open(paths['Details Output Path'] + 'test_' + str(item) + '.txt', 'w')
+    if simulation_parameters['Misalignment'][0]:
+        test_details_file.write("Rotation: {0: .1f}".format(rot) + '\n')
+    else:
+        test_details_file.write("Rotation: NA" + '\n')
+    if simulation_parameters['Misalignment'][1]:
+        test_details_file.write("Scale: {0: .1%}".format(scale) + '\n')
+    else:
+        test_details_file.write("Scale: NA" + '\n')
+    if simulation_parameters['Misalignment'][2]:
+        test_details_file.write("Shift: {0: .1%}, {1: .1%}".format(shift[0]/img_size, shift[1]/img_size) + '\n')
+    else:
+        test_details_file.write("Shift: NA" + '\n')
+
     if input_type == 'images':
         if n_images == 3 or hyperparameters['Train with In-focus Image']:
             image_flat_test.append(np.concatenate((system_test.image_under.real.reshape(img_size_flat),

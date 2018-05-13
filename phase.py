@@ -5,7 +5,7 @@ import copy
 import pyprind, sys
 import random as rnd
 from numba import jit
-from unwrap import unwrap
+#from unwrap import unwrap
 from scipy.ndimage import rotate, zoom, shift
 np.set_printoptions(threshold=10)
 
@@ -179,6 +179,7 @@ class PhaseImagingSystem(object):
         else:
             out = img
 
+
         return out
     def rotate_images(self, std, mode, n_images):
         if n_images == 3:
@@ -209,6 +210,7 @@ class PhaseImagingSystem(object):
             elif mode == 'gaussian':
                 angle = np.random.normal(scale=std)
             self.image_over_reverse = rotate(input=self.image_over, angle=angle, reshape=False, cval=1.0)
+        return angle
 
     def scale_images(self, std, n_images):
         if n_images == 3:
@@ -224,6 +226,7 @@ class PhaseImagingSystem(object):
             self.image_under_reverse = PhaseImagingSystem.scale(self.image_under_reverse, factor, cval=1.0)
             factor = np.random.normal(loc=1.0, scale=std)
             self.image_over_reverse = PhaseImagingSystem.scale(self.image_over_reverse, factor, cval=1.0)
+        return factor
 
     @staticmethod
     def _random_vector(std):
@@ -246,6 +249,7 @@ class PhaseImagingSystem(object):
             self.image_under_reverse = shift(input=self.image_under_reverse, shift=disp, cval=1.0)
             disp = PhaseImagingSystem._random_vector(std)
             self.image_over_reverse = shift(input=self.image_over_reverse, shift=disp, cval=1.0)
+        return disp
 
     @staticmethod
     def extract_phase_from_wavefield(wave):
