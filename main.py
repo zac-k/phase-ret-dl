@@ -112,15 +112,15 @@ np.set_printoptions(threshold=np.inf)
 # micrographs. If number of images == 2, 'Train with In-focus Image' uses the approximated
 # image for training, and processing the test images, otherwise they are only used for
 # the TIE.
-hyperparameters = {'Hidden Layer Size': [50000],
+hyperparameters = {'Hidden Layer Size': [50000, 4096, 50000],
                    'Input Type': 'images',
                    'Number of Images': 2,
                    'Train with In-focus Image': False,  # False has no effect if n_images == 3
-                   'Train/Valid/Test Split': [10, 0, 10],
+                   'Train/Valid/Test Split': [5000, 0, 100],
                    'Batch Size': 50,
                    'Optimiser Type': 'gradient descent',
                    'Learning Rate': 0.5,
-                   'Activation Functions': [tf.nn.tanh],
+                   'Activation Functions': [tf.nn.tanh, None, tf.nn.tanh],
                    'Use Convolutional Layers': False,
                    'Number of Epochs': 50,
                    'Initialisation Type': 'identity'
@@ -130,7 +130,7 @@ hyperparameters = {'Hidden Layer Size': [50000],
 simulation_parameters = {'Pre-remove Offset': False,
                          'Phase Retrieval Method': 'TIE',
                          'Misalignment': [True, True, True],  # rotation, scale, translation
-                         'Rotation/Scale/Shift': [360, 0.03, 0.03],  # Rotation is in degrees
+                         'Rotation/Scale/Shift': [360, 0.03, 0.01],  # Rotation is in degrees
                          'Rotation Mode': 'uniform',  # 'uniform' or 'gaussian'
                          'Load Model': False,
                          'Experimental Test Data': False,
@@ -296,7 +296,7 @@ if not simulation_parameters['Load Model']:
                         imaging_parameters['Image Limits'])
         train_details_file = open(paths['Details Output Path'] + 'train_' + str(item) + '.txt', 'w')
         if simulation_parameters['Misalignment'][0]:
-            train_details_file.write("Rotation: {0: .1f}".format(rot) + '\n')
+            train_details_file.write("Rotation: {0: .1f} degrees".format(rot) + '\n')
         else:
             train_details_file.write("Rotation: NA" + '\n')
         if simulation_parameters['Misalignment'][1]:
@@ -399,7 +399,7 @@ for item in range(num_train, num_test + num_train):
 
     test_details_file = open(paths['Details Output Path'] + 'test_' + str(item) + '.txt', 'w')
     if simulation_parameters['Misalignment'][0]:
-        test_details_file.write("Rotation: {0: .1f}".format(rot) + '\n')
+        test_details_file.write("Rotation: {0: .1f} degrees".format(rot) + '\n')
     else:
         test_details_file.write("Rotation: NA" + '\n')
     if simulation_parameters['Misalignment'][1]:

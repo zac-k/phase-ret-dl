@@ -8,6 +8,7 @@ from numba import jit
 #from unwrap import unwrap
 from scipy.ndimage import rotate, zoom, shift
 np.set_printoptions(threshold=10)
+import warnings
 
 
 h = 6.63e-34  # Planck's constant
@@ -149,7 +150,7 @@ class PhaseImagingSystem(object):
         # dimension, so instead we create a tuple of zoom factors, one per array
         # dimension, with 1's for any trailing dimensions after the width and height.
         zoom_tuple = (zoom_factor,) * 2 + (1,) * (img.ndim - 2)
-        print(zoom_factor)
+
         # zooming out
         if zoom_factor < 1:
             zh = int(np.round(zoom_factor * h))
@@ -168,7 +169,7 @@ class PhaseImagingSystem(object):
             zw = int(np.round(w / zoom_factor))
             top = (h - zh) // 2
             left = (w - zw) // 2
-            
+
             out = zoom(img[top:top + zh +1, left:left + zw + 1], zoom_tuple, **kwargs)
 
             # `out` might still be slightly larger than `img` due to rounding, so
@@ -215,10 +216,10 @@ class PhaseImagingSystem(object):
         return angle
 
     def scale_images(self, std, n_images):
+        #factor = np.random.normal(loc=1.0, scale=std)
+        factor = np.random.uniform(1.0-std, 1+std)
         if n_images == 3:
-            factor = np.random.normal(loc=1.0, scale=std)
             self.image_under = PhaseImagingSystem.scale(self.image_under, factor, cval=1.0)
-        factor = np.random.normal(loc=1.0, scale=std)
         self.image_over = PhaseImagingSystem.scale(self.image_over, factor, cval=1.0)
         if self.flipping:
             if n_images == 3:
@@ -233,7 +234,9 @@ class PhaseImagingSystem(object):
     @staticmethod
     def _random_vector(std):
         angle = np.random.uniform(0, 2 * PI)
-        r = np.abs(np.random.normal(scale=std))
+        #r = np.abs(np.random.normal(scale=std))
+        r = np.random.uniform(0, std)
+
         disp = [r * np.cos(angle), r * np.sin(angle)]
         return disp
 
@@ -2273,15 +2276,25 @@ class PhaseImagingSystem(object):
         return fft.ifftshift(wave)
 
     def _add_noise(self, image):
-        for i in range(len(image)):
-            for j in range(len(image[0])):
-                if image[i, j] >= 0:
-                    image[i, j] = np.random.poisson(image[i, j] /
+        print("noise level: ", self.noise_level)
+
+        try:
+            for i in range(len(image)):
+                for j in range(len(image[0])):
+                    if image[i, j] >= 0:
+                        image[i, j] = np.random.poisson(image[i, j] /
+                                          (self.noise_level *
+                                           self.noise_level *
+                                           self.image_intensity)) * (self.noise_level *
+                                                                     self.noise_level *
+                                                                     self.image_intensity)
+        except ValueError:
+            print("lam: ", print(image[i, j] /
                                       (self.noise_level *
                                        self.noise_level *
-                                       self.image_intensity)) * (self.noise_level *
-                                                                 self.noise_level *
-                                                                 self.image_intensity)
+                                       self.image_intensity)))
+            warnings.warn("value too high in add_noise()")
+
 
     def _construct_inverse_k_squared_kernel(self):
 
