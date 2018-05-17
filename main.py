@@ -62,6 +62,65 @@ def new_fc_layer(in_vector,         # The previous Layer
     return layer
 
 
+def fc_layers(hyperparameters, input_for_first_fc_layer, num_inputs_for_first_fc_layer):
+    # Define fully connected layers
+    hidden_layer_size = hyperparameters['Hidden Layer Size']
+    num_hidden_layers = len(hidden_layer_size)
+    hidden_layers = []
+
+    for i in range(num_hidden_layers):
+        hidden_layers.append(tf.Variable(tf.zeros([hidden_layer_size[i]])))
+    for i in range(num_hidden_layers):
+        if i == 0:
+            hidden_input = input_for_first_fc_layer
+            hidden_input_size = num_inputs_for_first_fc_layer
+        else:
+            hidden_input = hidden_layers[i - 1]
+            hidden_input_size = hidden_layer_size[i - 1]
+        hidden_layers[i] = new_fc_layer(hidden_input,
+                                        hidden_input_size,
+                                        hidden_layer_size[i],
+                                        activation_function=hyperparameters['Activation Functions'][i],
+                                        init_type=hyperparameters['Initialisation Type'])
+
+    if num_hidden_layers == 0:
+        penultimate_layer = input_for_first_fc_layer
+        penultimate_layer_size = num_inputs_for_first_fc_layer
+    else:
+        penultimate_layer = hidden_layers[num_hidden_layers - 1]
+        penultimate_layer_size = hidden_layer_size[-1]
+
+    output = new_fc_layer(penultimate_layer,
+                          penultimate_layer_size,
+                          img_size_flat,
+                          activation_function=None,
+                          init_type=hyperparameters['Initialisation Type']
+                          )
+    return output
+
+def train_model(hyperparameters):
+    print('Training...')
+
+    # Set batch variables
+    batch_size = hyperparameters['Batch Size']  # Number of training examples in each batch
+    num_train = hyperparameters['Train/Valid/Test Split'][0]
+    num_batches = int(np.floor(num_train / batch_size))  # Calculate number of batches
+    num_epochs = hyperparameters['Number of Epochs']
+    train_bar = pyprind.ProgBar(num_epochs * num_batches, stream=sys.stdout)
+    for q in range(num_epochs):
+        for i in range(num_batches):
+            train_bar.update()
+            if (i + 1) * batch_size < num_train:
+                if hyperparameters['Input Type'] == 'images':
+                    x_batch = image_flat_train[i * batch_size: (i + 1) * batch_size]
+                elif hyperparameters['Input Type'] == 'phases':
+                    x_batch = phase_retrieved_flat_train[i * batch_size: (i + 1) * batch_size]
+                y_true_batch = phase_exact_flat_train[i * batch_size: (i + 1) * batch_size]
+                feed_dict_train = {x: x_batch,
+                                   y_true: y_true_batch}
+
+                session.run(optimizer, feed_dict=feed_dict_train)
+
 def new_conv_layer(input,
                    num_input_channels,
                    kernel_size,
@@ -116,7 +175,7 @@ hyperparameters = {'Hidden Layer Size': [50000],
                    'Input Type': 'images',
                    'Number of Images': 2,
                    'Train with In-focus Image': False,  # False has no effect if n_images == 3
-                   'Train/Valid/Test Split': [10, 0, 5],
+                   'Train/Valid/Test Split': [5000, 0, 100],
                    'Batch Size': 50,
                    'Optimiser Type': 'gradient descent',
                    'Learning Rate': 0.5,
@@ -129,12 +188,12 @@ hyperparameters = {'Hidden Layer Size': [50000],
 # the training and test sets. Will not work with experimental images.
 simulation_parameters = {'Pre-remove Offset': False,
                          'Phase Retrieval Method': 'TIE',
-                         'Misalignment': [True, True, True],  # rotation, scale, translation
-                         'Rotation/Scale/Shift': [360, 0.03, 0.01],  # Rotation is in degrees
-                         'Rotation/Scale/Shift Mode': ['gaussian', 'gaussian', 'gaussian'],  # 'uniform' or 'gaussian'
+                         'Misalignment': [False, True, False],  # rotation, scale, translation
+                         'Rotation/Scale/Shift': [360, 0.05, 0.01],  # Rotation is in degrees
+                         'Rotation/Scale/Shift Mode': ['uniform', 'uniform', 'uniform'],  # 'uniform' or 'gaussian'
                          'Load Model': False,
                          'Experimental Test Data': False,
-                         'Retrieve Phase Component': 'magnetic',  # 'total', 'electrostatic', or 'magnetic'
+                         'Retrieve Phase Component': 'electrostatic',  # 'total', 'electrostatic', or 'magnetic'
                          }
 imaging_parameters = {'Window Function Radius': 0.5,
                       'Accelerating Voltage': 300,  # electron accelerating voltage in keV
@@ -144,7 +203,7 @@ imaging_parameters = {'Window Function Radius': 0.5,
                       'Image Size in Pixels': 64,
                       'Multislice Resolution in Pixels': 1024,
                       'Domain Size': 150e-9,  # Width of images in metres
-                      'Noise Level': [0.00, 0.05],
+                      'Noise Level': [0.00, 0.00],
                       'Defocus': 10e-6,
                       'Error Limits': [-3, 3],
                       'Phase Limits': [-3, 3],
@@ -208,7 +267,7 @@ noise_level = imaging_parameters['Noise Level']
 
 # Set whether to use images or retrieved phases as input data
 input_type = hyperparameters['Input Type']
-assert input_type == 'images' or input_type == 'phases'
+assert input_type in ['images', 'phases', 'dual']
 # Set number of images used in through focal series
 n_images = hyperparameters['Number of Images']
 assert n_images == 2 or n_images == 3
@@ -311,6 +370,7 @@ if not simulation_parameters['Load Model']:
         else:
             train_details_file.write("Shift: NA" + '\n')
         train_details_file.write("Noise: {0: .1%}".format(local_noise_level) + '\n')
+        train_details_file.close()
         if input_type == 'images':
             if n_images == 3 or hyperparameters['Train with In-focus Image']:
                 image_flat_train.append(np.concatenate((system_train.image_under.real.reshape(img_size_flat),
@@ -402,7 +462,7 @@ for item in range(num_train, num_test + num_train):
                         image_output_path + 'image_test_over_' + str(item - num_train) + '.png',
                     imaging_parameters['Image Limits'])
 
-    test_details_file = open(paths['Details Output Path'] + 'test_' + str(item) + '.txt', 'w')
+    test_details_file = open(paths['Details Output Path'] + 'test_' + str(item-num_train) + '.txt', 'w')
     if simulation_parameters['Misalignment'][0]:
         test_details_file.write("Rotation: {0: .1f} degrees".format(rot) + '\n')
     else:
@@ -416,6 +476,7 @@ for item in range(num_train, num_test + num_train):
     else:
         test_details_file.write("Shift: NA" + '\n')
     test_details_file.write("Noise: {0: .1%}".format(local_noise_level) + '\n')
+    test_details_file.close()
 
     if input_type == 'images':
         if n_images == 3 or hyperparameters['Train with In-focus Image']:
@@ -434,7 +495,7 @@ if len(phase_exact_flat_test) > 0 and not simulation_parameters['Experimental Te
     f.write("Accuracy on test set (pre adjustment): {0: .1%}".format(error_pre_adj[0]) + " +/- {0: .1%}".format(error_pre_adj[1]) + '\n')
 
 # Determine number of nodes in input layer
-if input_type == 'images':
+if input_type in ['images', 'dual']:
     if hyperparameters['Train with In-focus Image']:
         n_training_images = 3
     else:
@@ -470,36 +531,7 @@ else:
 
 
 # Define fully connected layers
-num_hidden_layers = len(hyperparameters['Hidden Layer Size'])
-hidden_layers = []
-for i in range(num_hidden_layers):
-    hidden_layers.append(tf.Variable(tf.zeros([hidden_layer_size[i]])))
-for i in range(num_hidden_layers):
-    if i == 0:
-        hidden_input = input_for_first_fc_layer
-        hidden_input_size = num_inputs_for_first_fc_layer
-    else:
-        hidden_input = hidden_layers[i - 1]
-        hidden_input_size = hidden_layer_size[i - 1]
-    hidden_layers[i] = new_fc_layer(hidden_input,
-                                    hidden_input_size,
-                                    hidden_layer_size[i],
-                                    activation_function=hyperparameters['Activation Functions'][i],
-                                    init_type=hyperparameters['Initialisation Type'])
-
-if num_hidden_layers == 0:
-    penultimate_layer = input_for_first_fc_layer
-    penultimate_layer_size = num_inputs_for_first_fc_layer
-else:
-    penultimate_layer = hidden_layers[num_hidden_layers - 1]
-    penultimate_layer_size = hidden_layer_size[-1]
-
-output = new_fc_layer(penultimate_layer,
-                      penultimate_layer_size,
-                      img_size_flat,
-                      activation_function=None,
-                      init_type=hyperparameters['Initialisation Type']
-                      )
+output = fc_layers(hyperparameters, input_for_first_fc_layer, num_inputs_for_first_fc_layer)
 
 # Define cost function
 cost = tf.reduce_mean(tf.squared_difference(y_true, output))
@@ -542,6 +574,9 @@ elif input_type == 'phases':
     feed_dict_test = {x: phase_retrieved_flat_test,
                       y_true: phase_exact_flat_test
                       }
+elif input_type == 'dual':
+    feed_dict_test = {x: image_flat_train,
+                      y_true: phase_exact_flat_train}
 if simulation_parameters['Load Model']:
     saver.restore(session, load_model_path + 'model')
 
@@ -551,33 +586,20 @@ else:
 
 
 
-    # Set batch variables
-    batch_size = hyperparameters['Batch Size']  # Number of training examples in each batch
-    num_batches = int(np.floor(num_train / batch_size))  # Calculate number of batches
+
 
     # Calculate the mean of the training data for later use
     mean_exact_train = np.mean(phase_exact_flat_train, axis=0)
 
 
     # Train the model
-    print('Training...')
+    train_model(hyperparameters)
 
-    num_epochs = hyperparameters['Number of Epochs']
-    train_bar = pyprind.ProgBar(num_epochs * num_batches, stream=sys.stdout)
-    for q in range(num_epochs):
-        for i in range(num_batches):
-            train_bar.update()
-            if (i + 1) * batch_size < num_train:
-                if input_type == 'images':
-                    x_batch = image_flat_train[i * batch_size: (i + 1) * batch_size]
-                elif input_type == 'phases':
-                    x_batch = phase_retrieved_flat_train[i * batch_size: (i + 1) * batch_size]
-                y_true_batch = phase_exact_flat_train[i * batch_size: (i + 1) * batch_size]
-                feed_dict_train = {x: x_batch,
-                                   y_true: y_true_batch}
 
-                session.run(optimizer, feed_dict=feed_dict_train)
+if input_type == 'dual':
+    feed_dict_train2 = {
 
+    }
 
 
 # Calculate and print average normalised rms error in test set after processing through
