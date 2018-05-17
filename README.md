@@ -66,7 +66,7 @@ This is a list containing the number of neurons per hidden layer. The total numb
 
 ### 'Input Type'
 
-Set to `'images'` or `'phases'`. Determines whether the neural network is trained and tested on out-of-focus images directly, or on retrieved phases.
+Set to `'images'`, `'phases'`, or `'dual'`. Determines whether the neural network is trained and tested on out-of-focus images directly, or on retrieved phases. `'dual'` will do both using two separate networks, but is not fully implemented yet.
 
 ### 'Number of Images'
 
@@ -91,6 +91,10 @@ Method to use in optimising the ANN. Valid values are `'gradient descent'`, `'ad
 ### 'Learning Rate'
 
 Learning rate of the optimiser. A good starting value is `0.5` for gradient descent, or `1e-4` for adam.
+
+### 'Activation Functions'
+
+List of activation functions for the hidden layers in the network. Use the tensorflow function names directly (e.g., `tf.nn.tanh` or `tf.nn.relu`, etc.). List should be the same length as 'Hidden Layer Size', including being a list with one element if the network has a single hidden layer.
 
 ### 'Use Convolutional Layers'
 
@@ -120,11 +124,11 @@ Three element list of booleans. Tells the ANN whether to use random variations i
 
 ### 'Rotation/Scale/Shift'
 
-Three element list containing the standard deviation of variations in rotation (in degrees), scaling, and translation, respectively. If rotation mode is `'uniform'`, the first element here is the range. Scale and shift are selected from a Gaussian distribution.
+Three element list containing the standard deviation (gaussian) or range (uniform) of variations in rotation (in degrees), scaling, and translation, respectively. If rotation mode is `'uniform'`, the first element here is the range. Scale and shift are selected from a Gaussian distribution.
 
-### 'Rotation Mode'
+### 'Rotation/Scale/Shift Mode'
 
-Set to `'uniform'` or `'gaussian'`. The former would typically be used for completely arbitrary rotations (range will need to be set to `360` for this separately), while the latter is a reasonable choice for small misalignments.
+Three element list specifying the distribution from which to draw random values for rotation, scale, and shift. Set each element to `'uniform'` or `'gaussian'`.
 
 ### 'Load Model'
 
@@ -136,7 +140,7 @@ Boolean. If `True`, loads the test images from experimental data. The filenames 
 
 ### 'Retrieve Phase Component'
 
-Set to 'total', 'electrostatic', or 'magnetic'. Component of the phase that is used for training, phase retrieval, and error determination.
+Set to 'total', 'electrostatic', or 'magnetic'. Component of the phase that is used for training, phase retrieval, and error determination. Has no effect if magnetic potential (see below) is set to false.
 
 ## imaging_parameters
 
@@ -174,7 +178,7 @@ Width of images in metres.
 
 ### 'Noise Level'
 
-Fractional noise level. For example, set this to `0.05` for 5\% noise.
+Two element list containing minimum and maximum fractional noise level. For example, set this to `[0.05, 0.05]` for constant 5\% noise.
 
 ### 'Defocus'
 
@@ -265,7 +269,7 @@ Because I am often testing out fringe cases, while at the same time working on i
                              'Phase Retrieval Method': 'TIE',
                              'Misalignment': [True, True, True],  # rotation, scale, translation
                              'Rotation/Scale/Shift': [3, 0.02, 0.01],  # Rotation is in degrees
-                             'Rotation Mode': 'gaussian',  # 'uniform' or 'gaussian'
+                             'Rotation/Scale/Shift Mode': ['uniform', 'uniform', 'uniform'],  # 'uniform' or 'gaussian'
                              'Load Model': False,
                              'Experimental Test Data': False,
                              'Retrieve Phase Component': 'total',  # 'total', 'electrostatic', or 'magnetic'
@@ -279,7 +283,7 @@ Because I am often testing out fringe cases, while at the same time working on i
                           'Image Size in Pixels': 64,
                           'Multislice Resolution in Pixels': 1024,
                           'Domain Size': 150e-9,  # Width of images in metres
-                          'Noise Level': 0.00,
+                          'Noise Level': [0.00, 0.01],
                           'Defocus': 10e-6,
                           'Error Limits': [-3, 3],
                           'Phase Limits': [-3, 3],
