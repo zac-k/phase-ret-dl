@@ -215,9 +215,11 @@ class PhaseImagingSystem(object):
             self.image_over_reverse = rotate(input=self.image_over, angle=angle, reshape=False, cval=1.0)
         return angle
 
-    def scale_images(self, std, n_images):
-        #factor = np.random.normal(loc=1.0, scale=std)
-        factor = np.random.uniform(1.0-std, 1+std)
+    def scale_images(self, mode, std, n_images):
+        if mode == 'gaussian':
+            factor = np.random.normal(loc=1.0, scale=std)
+        elif mode == 'uniform':
+            factor = np.random.uniform(1.0-std, 1+std)
         if n_images == 3:
             self.image_under = PhaseImagingSystem.scale(self.image_under, factor, cval=1.0)
         self.image_over = PhaseImagingSystem.scale(self.image_over, factor, cval=1.0)
@@ -232,19 +234,22 @@ class PhaseImagingSystem(object):
         return factor
 
     @staticmethod
-    def _random_vector(std):
+    def _random_vector(std, mode):
+
         angle = np.random.uniform(0, 2 * PI)
-        #r = np.abs(np.random.normal(scale=std))
-        r = np.random.uniform(0, std)
+
+        if mode == 'uniform':
+            r = np.random.uniform(0, std)
+        elif mode == 'gaussian':
+            r = np.abs(np.random.normal(scale=std))
 
         disp = [r * np.cos(angle), r * np.sin(angle)]
         return disp
 
-    def shift_images(self, std, n_images):
+    def shift_images(self, mode, std, n_images):
+        disp = PhaseImagingSystem._random_vector(std=std, mode=mode)
         if n_images == 3:
-            disp = PhaseImagingSystem._random_vector(std)
             self.image_under = shift(input=self.image_under, shift=disp, cval=1.0)
-        disp = PhaseImagingSystem._random_vector(std)
         self.image_over = shift(input=self.image_over, shift=disp, cval=1.0)
         if self.flipping:
             if n_images == 3:

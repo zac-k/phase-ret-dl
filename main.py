@@ -112,15 +112,15 @@ np.set_printoptions(threshold=np.inf)
 # micrographs. If number of images == 2, 'Train with In-focus Image' uses the approximated
 # image for training, and processing the test images, otherwise they are only used for
 # the TIE.
-hyperparameters = {'Hidden Layer Size': [50000, 4096, 50000],
+hyperparameters = {'Hidden Layer Size': [50000],
                    'Input Type': 'images',
                    'Number of Images': 2,
                    'Train with In-focus Image': False,  # False has no effect if n_images == 3
-                   'Train/Valid/Test Split': [5000, 0, 100],
+                   'Train/Valid/Test Split': [10, 0, 5],
                    'Batch Size': 50,
                    'Optimiser Type': 'gradient descent',
                    'Learning Rate': 0.5,
-                   'Activation Functions': [tf.nn.tanh, None, tf.nn.tanh],
+                   'Activation Functions': [tf.nn.tanh],
                    'Use Convolutional Layers': False,
                    'Number of Epochs': 50,
                    'Initialisation Type': 'identity'
@@ -131,7 +131,7 @@ simulation_parameters = {'Pre-remove Offset': False,
                          'Phase Retrieval Method': 'TIE',
                          'Misalignment': [True, True, True],  # rotation, scale, translation
                          'Rotation/Scale/Shift': [360, 0.03, 0.01],  # Rotation is in degrees
-                         'Rotation Mode': 'uniform',  # 'uniform' or 'gaussian'
+                         'Rotation/Scale/Shift Mode': ['gaussian', 'gaussian', 'gaussian'],  # 'uniform' or 'gaussian'
                          'Load Model': False,
                          'Experimental Test Data': False,
                          'Retrieve Phase Component': 'magnetic',  # 'total', 'electrostatic', or 'magnetic'
@@ -165,7 +165,8 @@ paths = {'Experimental Data Path': './data/images/experimental/',
          'Details Output Path': './data/figures/details/'}
 
 pathlib.Path(paths['Details Output Path']).mkdir(parents=True, exist_ok=True)
-assert simulation_parameters['Rotation Mode'] in ('gaussian', 'uniform')
+for i in simulation_parameters['Rotation/Scale/Shift Mode']:
+    assert i in ('gaussian', 'uniform')
 assert simulation_parameters['Phase Retrieval Method'] in ('TIE', 'GS')
 assert simulation_parameters['Retrieve Phase Component'] in ('total', 'electrostatic', 'magnetic')
 assert len(hyperparameters['Hidden Layer Size']) == len(hyperparameters['Activation Functions'])
@@ -255,13 +256,15 @@ if not simulation_parameters['Load Model']:
         system_train.generate_images(n_images)
         if simulation_parameters['Misalignment'][0]:
             rot = system_train.rotate_images(std=simulation_parameters['Rotation/Scale/Shift'][0],
-                                       mode=simulation_parameters['Rotation Mode'],
+                                       mode=simulation_parameters['Rotation/Scale/Shift Mode'][0],
                                        n_images=n_images)
         if simulation_parameters['Misalignment'][1]:
-            scale = system_train.scale_images(simulation_parameters['Rotation/Scale/Shift'][1],
+            scale = system_train.scale_images(std=simulation_parameters['Rotation/Scale/Shift'][1],
+                                       mode=simulation_parameters['Rotation/Scale/Shift Mode'][1],
                                       n_images=n_images)
         if simulation_parameters['Misalignment'][2]:
             shift = system_train.shift_images(std=img_size*simulation_parameters['Rotation/Scale/Shift'][2],
+                                       mode=simulation_parameters['Rotation/Scale/Shift Mode'][2],
                                       n_images=n_images)
         system_train.approximate_in_focus()
         system_train.add_noise_to_micrographs()
@@ -359,13 +362,15 @@ for item in range(num_train, num_test + num_train):
         system_test.generate_images(n_images)
         if simulation_parameters['Misalignment'][0]:
             system_test.rotate_images(std=simulation_parameters['Rotation/Scale/Shift'][0],
-                                      mode=simulation_parameters['Rotation Mode'],
+                                       mode=simulation_parameters['Rotation/Scale/Shift Mode'][0],
                                       n_images=n_images)
         if simulation_parameters['Misalignment'][1]:
             system_test.scale_images(std=simulation_parameters['Rotation/Scale/Shift'][1],
+                                       mode=simulation_parameters['Rotation/Scale/Shift Mode'][1],
                                      n_images=n_images)
         if simulation_parameters['Misalignment'][2]:
             system_test.shift_images(std=img_size*simulation_parameters['Rotation/Scale/Shift'][2],
+                                       mode=simulation_parameters['Rotation/Scale/Shift Mode'][2],
                                      n_images=n_images)
         system_test.approximate_in_focus()
         system_test.add_noise_to_micrographs()
