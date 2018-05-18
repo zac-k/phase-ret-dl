@@ -2281,7 +2281,6 @@ class PhaseImagingSystem(object):
         return fft.ifftshift(wave)
 
     def _add_noise(self, image):
-        print("noise level: ", self.noise_level)
 
         try:
             for i in range(len(image)):
