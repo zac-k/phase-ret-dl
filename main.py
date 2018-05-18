@@ -189,7 +189,7 @@ hyperparameters = {'Hidden Layer Size': [50000],
 simulation_parameters = {'Pre-remove Offset': False,
                          'Phase Retrieval Method': 'TIE',
                          'Misalignment': [False, True, False],  # rotation, scale, translation
-                         'Rotation/Scale/Shift': [360, 0.05, 0.01],  # Rotation is in degrees
+                         'Rotation/Scale/Shift': [360, 0.01, 0.01],  # Rotation is in degrees
                          'Rotation/Scale/Shift Mode': ['uniform', 'uniform', 'uniform'],  # 'uniform' or 'gaussian'
                          'Load Model': False,
                          'Experimental Test Data': False,
@@ -421,15 +421,15 @@ for item in range(num_train, num_test + num_train):
     else:
         system_test.generate_images(n_images)
         if simulation_parameters['Misalignment'][0]:
-            system_test.rotate_images(std=simulation_parameters['Rotation/Scale/Shift'][0],
+            rot = system_test.rotate_images(std=simulation_parameters['Rotation/Scale/Shift'][0],
                                        mode=simulation_parameters['Rotation/Scale/Shift Mode'][0],
                                       n_images=n_images)
         if simulation_parameters['Misalignment'][1]:
-            system_test.scale_images(std=simulation_parameters['Rotation/Scale/Shift'][1],
+            scale = system_test.scale_images(std=simulation_parameters['Rotation/Scale/Shift'][1],
                                        mode=simulation_parameters['Rotation/Scale/Shift Mode'][1],
                                      n_images=n_images)
         if simulation_parameters['Misalignment'][2]:
-            system_test.shift_images(std=img_size*simulation_parameters['Rotation/Scale/Shift'][2],
+            shift = system_test.shift_images(std=img_size*simulation_parameters['Rotation/Scale/Shift'][2],
                                        mode=simulation_parameters['Rotation/Scale/Shift Mode'][2],
                                      n_images=n_images)
         system_test.approximate_in_focus()
@@ -671,16 +671,26 @@ if not simulation_parameters['Experimental Test Data']:
     for i in range(num_test):
         error_test = utils.normalised_rms_error(phase_exact_flat_test[i], phase_retrieved_flat_test[i])
         f.write("Accuracy on test input " + str(i) + ": {0: .1%}".format(error_test) + '\n')
+        test_details_file = open(paths['Details Output Path'] + 'test_' + str(i) + '.txt', 'a')
+        test_details_file.write("Accuracy on test input " + str(i) + ": {0: .1%}".format(error_test) + '\n')
+        test_details_file.close
 
     accuracy = tf.sqrt(tf.reduce_sum(tf.squared_difference(y_true, output), 1) / tf.reduce_sum(tf.square(y_true), 1))
     acc, x_val = session.run([accuracy, x], feed_dict=feed_dict_test)
+
     for i, output_image in enumerate(output_images):
         f.write("Accuracy on test input " + str(i) + "(adjusted): {0: .1%}".format(acc[i]) + '\n')
+        test_details_file = open(paths['Details Output Path'] + 'test_' + str(i) + '.txt', 'a')
+        test_details_file.write("Accuracy on test input " + str(i) + "(adjusted): {0: .1%}".format(acc[i]) + '\n')
+        test_details_file.close
 
 if not simulation_parameters['Load Model']:
     for i in range(num_train):
         error_train = utils.normalised_rms_error(phase_exact_flat_train[i], phase_retrieved_flat_train[i])
         f.write("Accuracy on training input " + str(i) + ": {0: .1%}".format(error_train) + '\n')
+        train_details_file = open(paths['Details Output Path'] + 'train_' + str(i) + '.txt', 'a')
+        train_details_file.write("Accuracy on training input " + str(i) + ": {0: .1%}".format(error_train) + '\n')
+        train_details_file.close
 
 f.close()
 
