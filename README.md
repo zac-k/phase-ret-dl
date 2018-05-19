@@ -335,6 +335,10 @@ This README.
 
 These are just notes I keep on my own personal usage of this package. Some of the information in there may be useful to others, such as what learning rates to try for certain optimisers, but most of it will not make sense out of context. The notes are often speculative and not based on well tested ideas, so read with caution.
 
+## [generate_csv.py](https://github.com/zac-k/phase-ret-dl/blob/master/generate_csv.py)
+
+Generates csv file for plotting from multiple error files. Copy the errors.txt files, from different runs of the neural network, into the root directory of the repository. Rename them to something appropriate and populate the `filenames` list with the names of the files. The output files will be the errors for the ANN and the TIE, with each column containing data from a different file, and each row being for a different test particle. Column order will match the order of names in the `filenames` list. Headings can easily be added in Excel or using Python.
+
 # Acknowledgements
 
 Thanks to [Hvass-Labs' TensorFlow tutorials](https://github.com/Hvass-Labs/TensorFlow-Tutorials), which were immensely helpful in understanding how to implement neural networks using TensorFlow. Some of the code from the tutorial is used in this project without much alteration.
