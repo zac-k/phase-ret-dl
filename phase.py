@@ -5,7 +5,7 @@ import copy
 import pyprind, sys
 import random as rnd
 from numba import jit
-#from unwrap import unwrap
+from unwrap import unwrap
 from scipy.ndimage import rotate, zoom, shift
 np.set_printoptions(threshold=10)
 import warnings
@@ -109,8 +109,8 @@ class PhaseImagingSystem(object):
 
         if use_multislice and multislice_method == 'files':
 
-            self.wave_multislice = self._import_wavefield(path + 'image(' +
-                                                        str(item) + ')', self.projected_potential_size)
+            self.wave_multislice = np.conj(self._import_wavefield(path + 'image(' +
+                                                        str(item) + ')', self.projected_potential_size))
             self.phase_exact = PhaseImagingSystem.extract_phase_from_wavefield(self.wave_multislice)
         else:
             # Construct specimen from file, project phases, and
@@ -126,8 +126,8 @@ class PhaseImagingSystem(object):
 
         if use_multislice:
             if multislice_method == 'files':
-                self.wave_multislice_hr = self._import_wavefield(path + 'image_hr(' +
-                                                        str(item) + ')', self.M)
+                self.wave_multislice_hr = np.conj(self._import_wavefield(path + 'image_hr(' +
+                                                        str(item) + ')', self.M))
             else:
                 self.atom_locations = self.build_atom_locations()
                 random_axis = PhaseImagingSystem.generate_random_axis()
