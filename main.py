@@ -191,7 +191,7 @@ simulation_parameters = {'Pre-remove Offset': False,
                          'Misalignment': [False, False, False],  # rotation, scale, translation
                          'Rotation/Scale/Shift': [5, 0.01, 0.01],  # Rotation is in degrees
                          'Rotation/Scale/Shift Mode': ['uniform', 'uniform', 'uniform'],  # 'uniform' or 'gaussian'
-                         'Load Model': True,
+                         'Load Model': False,
                          'Experimental Test Data': False,
                          'Retrieve Phase Component': 'electrostatic',  # 'total', 'electrostatic', or 'magnetic'
                          }
@@ -204,13 +204,13 @@ imaging_parameters = {'Window Function Radius': 0.5,
                       'Multislice Resolution in Pixels': 1024,
                       'Domain Size': 150e-9,  # Width of images in metres
                       'Noise Level': [0.00, 0.00],
-                      'Defocus': [0e-6, 10e-6],
+                      'Defocus': [10e-6, 10e-6],
                       'Error Limits': [-3, 3],
                       'Phase Limits': [-3, 3],
                       'Image Limits': [0, 2]
                       }
 specimen_parameters = {'Use Electrostatic/Magnetic Potential': [True, False],
-                       'Mean Inner Potential': [-17 + 1j, -17 +1j],
+                       'Mean Inner Potential': [0 + 1j, -30 +1j],
                        'Mass Magnetization': 80,  # emu/g
                        'Density': 5.18  # g/cm^3
                        }
@@ -222,6 +222,21 @@ paths = {'Experimental Data Path': './data/images/experimental/',
          'Save Model Path': './data/figures/',
          'Specimen Input Path': './data/specimens/training4/',
          'Details Output Path': './data/figures/details/'}
+
+varied_quantities = []
+for i in range(3):
+    if simulation_parameters['Misalignment'][i] == True and simulation_parameters['Rotation/Scale/Shift'][i] != 0:
+        varied_quantities.append(['rotation', 'scaling', 'shift'][i])
+if imaging_parameters['Noise Level'][0] != imaging_parameters['Noise Level'][1]:
+    varied_quantities.append('noise level')
+if imaging_parameters['Defocus'][0] != imaging_parameters['Defocus'][1]:
+    varied_quantities.append('defocus')
+if specimen_parameters['Mean Inner Potential'][0].real != specimen_parameters['Mean Inner Potential'][1].real:
+    varied_quantities.append('electrostatic potential')
+if specimen_parameters['Mean Inner Potential'][0].imag != specimen_parameters['Mean Inner Potential'][1].imag:
+    varied_quantities.append('imaginary potential')
+
+print("The following quantities will be varied: ", varied_quantities)
 
 pathlib.Path(paths['Details Output Path']).mkdir(parents=True, exist_ok=True)
 for i in simulation_parameters['Rotation/Scale/Shift Mode']:
