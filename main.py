@@ -204,7 +204,7 @@ imaging_parameters = {'Window Function Radius': 0.5,
                       'Multislice Resolution in Pixels': 1024,
                       'Domain Size': 150e-9,  # Width of images in metres
                       'Noise Level': [0.00, 0.00],
-                      'Defocus': [0e-6, 100e-6],
+                      'Defocus': [0e-6, 10e-6],
                       'Error Limits': [-3, 3],
                       'Phase Limits': [-3, 3],
                       'Image Limits': [0, 2]
@@ -295,7 +295,7 @@ if not simulation_parameters['Load Model']:
     for item in range(num_train):
         local_noise_level = np.random.uniform(noise_level[0], noise_level[1])
         local_defocus = np.random.uniform(imaging_parameters['Defocus'][0], imaging_parameters['Defocus'][1])
-        local_mip = [np.random.uniform(mip.real[0], mip.real[1]), np.random.uniform(mip.imag[0], mip.imag[1]) * 1j]
+        local_mip = np.random.uniform(mip[0].real, mip[1].real) + np.random.uniform(mip[0].imag, mip[1].imag) * 1j
         train_generate_bar.update()
         specimen_file = specimen_files[np.random.randint(len(specimen_files))]
         system_train = phase.PhaseImagingSystem(
@@ -403,7 +403,7 @@ for item in range(num_train, num_test + num_train):
     test_generate_bar.update()
     local_noise_level = np.random.uniform(noise_level[0], noise_level[1])
     local_defocus = np.random.uniform(imaging_parameters['Defocus'][0], imaging_parameters['Defocus'][1])
-    local_mip = [np.random.uniform(mip.real[0], mip.real[1]), np.random.uniform(mip.imag[0], mip.imag[1]) * 1j]
+    local_mip = np.random.uniform(mip[0].real, mip[1].real) + np.random.uniform(mip[0].imag, mip[1].imag) * 1j
 
     system_test = phase.PhaseImagingSystem(image_size=img_size,
                                            defocus=local_defocus,
