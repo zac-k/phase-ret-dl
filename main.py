@@ -175,7 +175,7 @@ hyperparameters = {'Hidden Layer Size': [50000],
                    'Input Type': 'images',
                    'Number of Images': 2,
                    'Train with In-focus Image': False,  # False has no effect if n_images == 3
-                   'Train/Valid/Test Split': [5000, 0, 100],
+                   'Train/Valid/Test Split': [10, 0, 10],
                    'Batch Size': 50,
                    'Optimiser Type': 'gradient descent',
                    'Learning Rate': 0.5,
@@ -188,7 +188,7 @@ hyperparameters = {'Hidden Layer Size': [50000],
 # the training and test sets. Will not work with experimental images.
 simulation_parameters = {'Pre-remove Offset': False,
                          'Phase Retrieval Method': 'TIE',
-                         'Misalignment': [False, True, False],  # rotation, scale, translation
+                         'Misalignment': [False, False, False],  # rotation, scale, translation
                          'Rotation/Scale/Shift': [360, 0.01, 0.01],  # Rotation is in degrees
                          'Rotation/Scale/Shift Mode': ['uniform', 'uniform', 'uniform'],  # 'uniform' or 'gaussian'
                          'Load Model': False,
@@ -204,7 +204,7 @@ imaging_parameters = {'Window Function Radius': 0.5,
                       'Multislice Resolution in Pixels': 1024,
                       'Domain Size': 150e-9,  # Width of images in metres
                       'Noise Level': [0.00, 0.00],
-                      'Defocus': 10e-6,
+                      'Defocus': [0e-6, 100e-6],
                       'Error Limits': [-3, 3],
                       'Phase Limits': [-3, 3],
                       'Image Limits': [0, 2]
@@ -294,11 +294,12 @@ if not simulation_parameters['Load Model']:
     train_generate_bar = pyprind.ProgBar(num_train, stream=sys.stdout)
     for item in range(num_train):
         local_noise_level = np.random.uniform(noise_level[0], noise_level[1])
+        local_defocus = np.random.uniform(imaging_parameters['Defocus'][0], imaging_parameters['Defocus'][1])
         train_generate_bar.update()
         specimen_file = specimen_files[np.random.randint(len(specimen_files))]
         system_train = phase.PhaseImagingSystem(
                image_size=img_size,
-               defocus=imaging_parameters['Defocus'],
+               defocus=local_defocus,
                image_width=imaging_parameters['Domain Size'],
                energy=imaging_parameters['Accelerating Voltage']*1e3,
                specimen_file=specimen_files[item],
@@ -370,6 +371,7 @@ if not simulation_parameters['Load Model']:
         else:
             train_details_file.write("Shift: NA" + '\n')
         train_details_file.write("Noise: {0: .1%}".format(local_noise_level) + '\n')
+        train_details_file.write("Defocus: {0: .1f}".format(local_defocus) + '\n')
         train_details_file.close()
         if input_type == 'images':
             if n_images == 3 or hyperparameters['Train with In-focus Image']:
@@ -397,8 +399,9 @@ test_generate_bar = pyprind.ProgBar(num_test, stream=sys.stdout)
 for item in range(num_train, num_test + num_train):
     test_generate_bar.update()
     local_noise_level = np.random.uniform(noise_level[0], noise_level[1])
+    local_defocus = np.random.uniform(imaging_parameters['Defocus'][0], imaging_parameters['Defocus'][1])
     system_test = phase.PhaseImagingSystem(image_size=img_size,
-                                           defocus=imaging_parameters['Defocus'],
+                                           defocus=local_defocus,
                                            image_width=imaging_parameters['Domain Size'],
                                            energy=imaging_parameters['Accelerating Voltage']*1e3,
                                            specimen_file=specimen_files[item],
@@ -476,6 +479,7 @@ for item in range(num_train, num_test + num_train):
     else:
         test_details_file.write("Shift: NA" + '\n')
     test_details_file.write("Noise: {0: .1%}".format(local_noise_level) + '\n')
+    test_details_file.write("Defocus: {0: .1f}".format(local_defocus) + '\n')
     test_details_file.close()
 
     if input_type == 'images':
@@ -674,6 +678,7 @@ if not simulation_parameters['Experimental Test Data']:
         test_details_file = open(paths['Details Output Path'] + 'test_' + str(i) + '.txt', 'a')
         test_details_file.write("Accuracy on test input " + str(i) + ": {0: .1%}".format(error_test) + '\n')
         test_details_file.close
+
 
     accuracy = tf.sqrt(tf.reduce_sum(tf.squared_difference(y_true, output), 1) / tf.reduce_sum(tf.square(y_true), 1))
     acc, x_val = session.run([accuracy, x], feed_dict=feed_dict_test)
