@@ -14,7 +14,7 @@ def single():
     ext = '.txt'
     n_samples = 1000
 
-    sources = ['Rotation', 'Scale', 'Shift', 'Noise']
+    sources = ['Rotation', 'Scale', 'Shift', 'Noise', 'Defocus']
     for j, source in enumerate(sources):
         vars()[source] = []
 
@@ -57,7 +57,7 @@ def single():
 def multiple():
 
     # List of input filenames
-    filenames = ['errors0.txt','errors1.txt', 'errors2.txt', 'errors3.txt', 'errors4.txt', 'errors5.txt']
+    filenames = ['errors0.txt','errors20.txt', 'errors40.txt', 'errors60.txt', 'errors80.txt', 'errors100.txt']
 
     # Iterate over the files and extract the TIE and ANN errors into two
     # separate lists of lists.
@@ -81,12 +81,12 @@ def multiple():
     ann = list(map(list, zip(*ann)))
 
     # Write the output of each list to a separate csv file
-    with open('output_TIE.csv','w') as output:
+    with open('output_TIE.csv', 'w') as output:
         writer = csv.writer(output, lineterminator='\n')
         writer.writerows(tie)
     with open('output_ANN.csv', 'w') as output:
         writer = csv.writer(output, lineterminator='\n')
         writer.writerows(ann)
 
-single()
+multiple()
 
