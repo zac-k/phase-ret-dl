@@ -12,9 +12,9 @@ def single():
     path = './data/figures/details/'
     prefix = 'test_'
     ext = '.txt'
-    n_samples = 1000
+    n_samples = 100
 
-    sources = ['Rotation', 'Scale', 'Shift', 'Noise', 'Defocus']
+    sources = ['Rotation', 'Scale', 'Shift', 'Noise', 'Defocus', 'Potential', 'Imaginary']
     for j, source in enumerate(sources):
         vars()[source] = []
 
@@ -57,7 +57,7 @@ def single():
 def multiple():
 
     # List of input filenames
-    filenames = ['errors0.txt','errors20.txt', 'errors40.txt', 'errors60.txt', 'errors80.txt', 'errors100.txt']
+    filenames = ['errors0.txt','errors20.txt','errors30.txt', 'errors40.txt', 'errors60.txt', 'errors80.txt', 'errors100.txt']
 
     # Iterate over the files and extract the TIE and ANN errors into two
     # separate lists of lists.
@@ -88,5 +88,5 @@ def multiple():
         writer = csv.writer(output, lineterminator='\n')
         writer.writerows(ann)
 
-multiple()
+single()
 

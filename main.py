@@ -175,7 +175,7 @@ hyperparameters = {'Hidden Layer Size': [50000],
                    'Input Type': 'images',
                    'Number of Images': 2,
                    'Train with In-focus Image': False,  # False has no effect if n_images == 3
-                   'Train/Valid/Test Split': [10, 0, 10],
+                   'Train/Valid/Test Split': [5000, 0, 100],
                    'Batch Size': 50,
                    'Optimiser Type': 'gradient descent',
                    'Learning Rate': 0.5,
@@ -189,9 +189,9 @@ hyperparameters = {'Hidden Layer Size': [50000],
 simulation_parameters = {'Pre-remove Offset': False,
                          'Phase Retrieval Method': 'TIE',
                          'Misalignment': [False, False, False],  # rotation, scale, translation
-                         'Rotation/Scale/Shift': [360, 0.01, 0.01],  # Rotation is in degrees
+                         'Rotation/Scale/Shift': [5, 0.01, 0.01],  # Rotation is in degrees
                          'Rotation/Scale/Shift Mode': ['uniform', 'uniform', 'uniform'],  # 'uniform' or 'gaussian'
-                         'Load Model': False,
+                         'Load Model': True,
                          'Experimental Test Data': False,
                          'Retrieve Phase Component': 'electrostatic',  # 'total', 'electrostatic', or 'magnetic'
                          }
@@ -210,7 +210,7 @@ imaging_parameters = {'Window Function Radius': 0.5,
                       'Image Limits': [0, 2]
                       }
 specimen_parameters = {'Use Electrostatic/Magnetic Potential': [True, False],
-                       'Mean Inner Potential': -17 + 1j,
+                       'Mean Inner Potential': [-17 + 1j, -17 +1j],
                        'Mass Magnetization': 80,  # emu/g
                        'Density': 5.18  # g/cm^3
                        }
@@ -295,6 +295,7 @@ if not simulation_parameters['Load Model']:
     for item in range(num_train):
         local_noise_level = np.random.uniform(noise_level[0], noise_level[1])
         local_defocus = np.random.uniform(imaging_parameters['Defocus'][0], imaging_parameters['Defocus'][1])
+        local_mip = [np.random.uniform(mip.real[0], mip.real[1]), np.random.uniform(mip.imag[0], mip.imag[1]) * 1j]
         train_generate_bar.update()
         specimen_file = specimen_files[np.random.randint(len(specimen_files))]
         system_train = phase.PhaseImagingSystem(
@@ -303,7 +304,7 @@ if not simulation_parameters['Load Model']:
                image_width=imaging_parameters['Domain Size'],
                energy=imaging_parameters['Accelerating Voltage']*1e3,
                specimen_file=specimen_files[item],
-               mip=mip,
+               mip=local_mip,
                is_attenuating=True,
                noise_level=local_noise_level,
                use_multislice=use_multislice,
@@ -359,19 +360,21 @@ if not simulation_parameters['Load Model']:
                         imaging_parameters['Image Limits'])
         train_details_file = open(paths['Details Output Path'] + 'train_' + str(item) + '.txt', 'w')
         if simulation_parameters['Misalignment'][0]:
-            train_details_file.write("Rotation: {0: .1f} degrees".format(rot) + '\n')
+            train_details_file.write("Rotation: {0: .5f} degrees".format(rot) + '\n')
         else:
             train_details_file.write("Rotation: NA" + '\n')
         if simulation_parameters['Misalignment'][1]:
-            train_details_file.write("Scale: {0: .1%}".format(scale-1) + '\n')
+            train_details_file.write("Scale: {0: .5%}".format(scale-1) + '\n')
         else:
             train_details_file.write("Scale: NA" + '\n')
         if simulation_parameters['Misalignment'][2]:
-            train_details_file.write("Shift: {0: .1%}, {1: .1%}".format(shift[0]/img_size, shift[1]/img_size) + '\n')
+            train_details_file.write("Shift: {0: .5%}, {1: .5%}".format(shift[0]/img_size, shift[1]/img_size) + '\n')
         else:
             train_details_file.write("Shift: NA" + '\n')
-        train_details_file.write("Noise: {0: .1%}".format(local_noise_level) + '\n')
-        train_details_file.write("Defocus: {0: .1f}".format(local_defocus) + '\n')
+        train_details_file.write("Noise: {0: .5%}".format(local_noise_level) + '\n')
+        train_details_file.write("Defocus: {0: .5f}".format(local_defocus * 1e6) + '\n')
+        train_details_file.write("Potential: {0: .5f}".format(local_mip.real) + '\n')
+        train_details_file.write("Imaginary: {0: .5f}".format(local_mip.imag) + '\n')
         train_details_file.close()
         if input_type == 'images':
             if n_images == 3 or hyperparameters['Train with In-focus Image']:
@@ -400,12 +403,14 @@ for item in range(num_train, num_test + num_train):
     test_generate_bar.update()
     local_noise_level = np.random.uniform(noise_level[0], noise_level[1])
     local_defocus = np.random.uniform(imaging_parameters['Defocus'][0], imaging_parameters['Defocus'][1])
+    local_mip = [np.random.uniform(mip.real[0], mip.real[1]), np.random.uniform(mip.imag[0], mip.imag[1]) * 1j]
+
     system_test = phase.PhaseImagingSystem(image_size=img_size,
                                            defocus=local_defocus,
                                            image_width=imaging_parameters['Domain Size'],
                                            energy=imaging_parameters['Accelerating Voltage']*1e3,
                                            specimen_file=specimen_files[item],
-                                           mip=mip,
+                                           mip=local_mip,
                                            is_attenuating=True,
                                            noise_level=local_noise_level,
                                            use_multislice=use_multislice,
@@ -467,19 +472,21 @@ for item in range(num_train, num_test + num_train):
 
     test_details_file = open(paths['Details Output Path'] + 'test_' + str(item-num_train) + '.txt', 'w')
     if simulation_parameters['Misalignment'][0]:
-        test_details_file.write("Rotation: {0: .1f} degrees".format(rot) + '\n')
+        test_details_file.write("Rotation: {0: .5f} degrees".format(rot) + '\n')
     else:
         test_details_file.write("Rotation: NA" + '\n')
     if simulation_parameters['Misalignment'][1]:
-        test_details_file.write("Scale: {0: .1%}".format(scale) + '\n')
+        test_details_file.write("Scale: {0: .5%}".format(scale) + '\n')
     else:
         test_details_file.write("Scale: NA" + '\n')
     if simulation_parameters['Misalignment'][2]:
-        test_details_file.write("Shift: {0: .1%}, {1: .1%}".format(shift[0]/img_size, shift[1]/img_size) + '\n')
+        test_details_file.write("Shift: {0: .5%}, {1: .1%}".format(shift[0]/img_size, shift[1]/img_size) + '\n')
     else:
         test_details_file.write("Shift: NA" + '\n')
-    test_details_file.write("Noise: {0: .1%}".format(local_noise_level) + '\n')
-    test_details_file.write("Defocus: {0: .1f}".format(local_defocus) + '\n')
+    test_details_file.write("Noise: {0: .5%}".format(local_noise_level) + '\n')
+    test_details_file.write("Defocus: {0: .5f}".format(local_defocus * 1e6) + '\n')
+    test_details_file.write("Potential: {0: .5f}".format(local_mip.real) + '\n')
+    test_details_file.write("Imaginary: {0: .5f}".format(local_mip.imag) + '\n')
     test_details_file.close()
 
     if input_type == 'images':
