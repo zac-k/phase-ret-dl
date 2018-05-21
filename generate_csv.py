@@ -37,7 +37,7 @@ def single():
 
                 for j, row in enumerate(reader):
                     if source+':' in row and 'NA' not in row:
-                        x = row[2][:-1]
+                        x = row[-1][:-1]
 
                         vars()[source].append(x)
     errors = []
