@@ -337,7 +337,7 @@ These are just notes I keep on my own personal usage of this package. Some of th
 
 ## [generate_csv.py](https://github.com/zac-k/phase-ret-dl/blob/master/generate_csv.py)
 
-Generates csv file for plotting from multiple error files. Copy the errors.txt files, from different runs of the neural network, into the root directory of the repository. Rename them to something appropriate and populate the `filenames` list with the names of the files. The output files will be the errors for the ANN and the TIE, with each column containing data from a different file, and each row being for a different test particle. Column order will match the order of names in the `filenames` list. Headings can easily be added in Excel or using Python.
+Generates csv file for plotting from multiple error files or multiple details files. For the former, copy the errors.txt files, from different runs of the neural network, into the root directory of the repository. Rename them to something appropriate and populate the `filenames` list with the names of the files. The output files will be the errors for the ANN and the TIE, with each column containing data from a different file, and each row being for a different test particle. Column order will match the order of names in the `filenames` list. Headings can easily be added in Excel or using Python. To run this, use the `multiple()` function. For using multiple details files, just make sure the details directory is correct and run the `single()` function. As the details files are all created from a single run of the ANN, this function can be run from within `main.py` to generate a csv on completion of testing.
 
 # Acknowledgements
 
