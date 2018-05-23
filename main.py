@@ -176,8 +176,8 @@ hyperparameters = {'Hidden Layer Size': [50000],
                    'Number of Images': 2,
                    'Train with In-focus Image': False,  # False has no effect if n_images == 3
                    'Train/Valid/Test Split': [5000, 0, 100],
-                   'Batch Size': 50,
-                   'Optimiser Type': 'gradient descent',
+                   'Start Number': 0,  # Specimen number to start the training set at
+                   'Batch Size': 50,                   'Optimiser Type': 'gradient descent',
                    'Learning Rate': 0.5,
                    'Activation Functions': [tf.nn.tanh],
                    'Use Convolutional Layers': False,
@@ -197,7 +197,7 @@ simulation_parameters = {'Pre-remove Offset': False,
                          }
 imaging_parameters = {'Window Function Radius': 0.5,
                       'Accelerating Voltage': 300,  # electron accelerating voltage in keV
-                      'Use Multislice': False,
+                      'Use Multislice': True,
                       'Multislice Method': 'files',
                       'Multislice Wavefield Path': 'D:/code/images/multislice/',
                       'Image Size in Pixels': 64,
@@ -210,7 +210,7 @@ imaging_parameters = {'Window Function Radius': 0.5,
                       'Image Limits': [0, 2]
                       }
 specimen_parameters = {'Use Electrostatic/Magnetic Potential': [True, False],
-                       'Mean Inner Potential': [0 + 1j, -30 +1j],
+                       'Mean Inner Potential': [-17 + 1j, -17 +1j],
                        'Mass Magnetization': 80,  # emu/g
                        'Density': 5.18  # g/cm^3
                        }
@@ -294,6 +294,7 @@ image_flat_train = []
 
 # Set quantities for training/validation/test split
 num_train, num_valid, num_test = hyperparameters['Train/Valid/Test Split']
+num_start = hyperparameters['Start Number']
 
 # Import specimen files
 specimen_files = []
@@ -301,7 +302,7 @@ specimen_path = paths['Specimen Input Path']
 specimen_ext = ''
 specimen_name = 'particle'
 for i in range(num_train + num_test):
-    specimen_files.append(specimen_path + specimen_name + '(' + str(i) + ')' + specimen_ext)
+    specimen_files.append(specimen_path + specimen_name + '(' + str(i + num_start) + ')' + specimen_ext)
 
 if not simulation_parameters['Load Model']:
     # Compute retrieved training phases and flatten training data
@@ -312,7 +313,6 @@ if not simulation_parameters['Load Model']:
         local_defocus = np.random.uniform(imaging_parameters['Defocus'][0], imaging_parameters['Defocus'][1])
         local_mip = np.random.uniform(mip[0].real, mip[1].real) + np.random.uniform(mip[0].imag, mip[1].imag) * 1j
         train_generate_bar.update()
-        specimen_file = specimen_files[np.random.randint(len(specimen_files))]
         system_train = phase.PhaseImagingSystem(
                image_size=img_size,
                defocus=local_defocus,
