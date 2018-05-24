@@ -54,7 +54,9 @@ When running on the cpu, this is fine for most of the settings I use. Simulating
 
 It also works fine on my other system (Core i5-2500K @4.2GHz, 8GB DDR3) at about the same speed, but the RAM maxes out and it starts using virtual memory, which makes the PC largely unusable for other purposes while it's running.
 
-GPU compute was unusable due to the relatively small amount of VRAM on my card, and I suggest making sure you have enough VRAM for your purposes before going to the trouble of installing tensorflow-gpu, CUDA, and CuDNN, if you don't already have them. 
+GPU compute was unusable due to the relatively small amount of VRAM on my card, and I suggest making sure you have enough VRAM for your purposes before going to the trouble of installing tensorflow-gpu, CUDA, and CuDNN, if you don't already have them.
+
+I am running this using python 3.6.0.
 
 # Parameters
 
