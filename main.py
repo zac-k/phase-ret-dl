@@ -176,7 +176,7 @@ hyperparameters = {'Hidden Layer Size': [50000],
                    'Number of Images': 2,
                    'Train with In-focus Image': False,  # False has no effect if n_images == 3
                    'Train/Valid/Test Split': [5000, 0, 100],
-                   'Start Number': 0,  # Specimen number to start the training set at
+                   'Start Number': 3803,  # Specimen number to start the training set at
                    'Batch Size': 50,                   'Optimiser Type': 'gradient descent',
                    'Learning Rate': 0.5,
                    'Activation Functions': [tf.nn.tanh],
@@ -325,7 +325,7 @@ if not simulation_parameters['Load Model']:
                use_multislice=use_multislice,
                multislice_method=imaging_parameters['Multislice Method'],
                M=M,
-               item=item,
+               item=item + num_start,
                path=imaging_parameters['Multislice Wavefield Path'],
                simulation_parameters=simulation_parameters,
                specimen_parameters=specimen_parameters)
@@ -431,7 +431,7 @@ for item in range(num_train, num_test + num_train):
                                            use_multislice=use_multislice,
                                            multislice_method=imaging_parameters['Multislice Method'],
                                            M=M,
-                                           item=item,
+                                           item=item + num_start,
                                            path=imaging_parameters['Multislice Wavefield Path'],
                                            simulation_parameters=simulation_parameters,
                                            specimen_parameters=specimen_parameters)
