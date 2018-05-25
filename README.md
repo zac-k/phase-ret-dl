@@ -83,6 +83,10 @@ Boolean. Has no effect when three images are used. When two images are used, set
 
 Dict of length three containing the size of the training, validation, and test sets, respectively. Validation is currently not implemented in this code and has no effect.
 
+### 'Start Number'
+
+Specimen number to start importing at. This is useful for debugging if there is a problem with any files used for training or testing, but can also be used to train the network on a different subset of the data.
+
 ### 'Batch Size'
 
 Number of training examples to use in each training batch.
@@ -111,6 +115,10 @@ Number of epochs (iterations over the full training set)the training will run fo
 
 How to initialise the weights and biases. `'identity'` is sufficient for most purposes in the present context. Other options are `'random'`, `'randomised identity'`, `'ones'`, and `'zeros'`.
 
+### 'Specify Parameters'
+
+This is not fully implemented yet. It will enable adding parameters used during training as an additional element of the training input vectors, which will allow training under a wider variety of conditions, with the input pamameters also specified during testing. The first parameter implemented here will be `'Defocus'`.
+
 ## <a name="simulation-parameters"></a>simulation_parameters
 
 ### 'Pre-remove Offset'
@@ -133,9 +141,9 @@ Three element list containing the standard deviation (gaussian) or range (unifor
 
 Three element list specifying the distribution from which to draw random values for rotation, scale, and shift. Set each element to `'uniform'` or `'gaussian'`.
 
-### 'Load Model'
+### 'Load/Retrain Model'
 
-Boolean. If `True`, loads the model from files saved by previous simulations, negating the need to spend time re-training the model. The other hyperparameter will need to be set to the same values as were used in the previous simulation. This information is available in `errors.txt`, which is output when running the program. Future versions should automate this. Other parameters can be altered, to test the same trained model on different types of test sets, but this hasn't been tested rigorously for all parameters.
+Two element list of Booleans. If `[0] == True`, loads the model from files saved by previous simulations, negating the need to spend time re-training the model. The other hyperparameter will need to be set to the same values as were used in the previous simulation. This information is available in `errors.txt`, which is output when running the program. Future versions should automate this. Other parameters can be altered, to test the same trained model on different types of test sets, but this hasn't been tested rigorously for all parameters. The second element is not implemented yet, but will allow for retraining the model using existing training data, speeding up the process while still alowing for adjustment of hyperparameters. I 'Load' is False, 'Retrain' will have no effect. Currently fails if 'Load' and 'Retrain' are both True, so if you set 'Load' to True, you must set 'Retrain' to False.
 
 ### 'Experimental Test Data'
 
@@ -185,7 +193,7 @@ Two element list containing minimum and maximum fractional noise level. For exam
 
 ### 'Defocus'
 
-Defocus in metres.
+Two element list containing minimum and maximum defocus in metres.
 
 ### 'Error Limits'
 
@@ -208,7 +216,7 @@ Two element boolean list. Determines which components of the phase to utilise in
 
 ### 'Mean Inner Potential'
 
-Complex float. The real part is the mean inner potential in volts (~-17 for magnetite), and the imaginary part is related to absorption coefficient. A reasonable value for this is around `1j`.
+Two element list of complex floats containing minimum and maximum mean inner potential values. The real part is the mean inner potential in volts (~-17 for magnetite), and the imaginary part is related to absorption coefficient. A reasonable value for this is around `1j`.
 
 ### 'Mass Magnetization'
 
@@ -259,13 +267,15 @@ Because I am often testing out fringe cases, while at the same time working on i
                        'Number of Images': 2,
                        'Train with In-focus Image': False,  # False has no effect if n_images == 3
                        'Train/Valid/Test Split': [5000, 0, 100],
+                       'Start Number': 0,
                        'Batch Size': 50,
                        'Optimiser Type': 'gradient descent',
                        'Learning Rate': 0.5,
-                       'Activation Functions': [tf.nn.tanh, tf.nn.relu, None, tf.nn.sigmoid, tf.nn.tanh],
+                       'Activation Functions': [tf.nn.tanh],
                        'Use Convolutional Layers': False,
                        'Number of Epochs': 50,
-                       'Initialisation Type': 'identity'
+                       'Initialisation Type': 'identity',
+                       'Specify Parameters': []
                        }
                         
     simulation_parameters = {'Pre-remove Offset': False,
@@ -273,7 +283,7 @@ Because I am often testing out fringe cases, while at the same time working on i
                              'Misalignment': [True, True, True],  # rotation, scale, translation
                              'Rotation/Scale/Shift': [3, 0.02, 0.01],  # Rotation is in degrees
                              'Rotation/Scale/Shift Mode': ['uniform', 'uniform', 'uniform'],  # 'uniform' or 'gaussian'
-                             'Load Model': False,
+                             'Load/Retrain Model': [False, False],
                              'Experimental Test Data': False,
                              'Retrieve Phase Component': 'total',  # 'total', 'electrostatic', or 'magnetic'
                              }
@@ -287,7 +297,7 @@ Because I am often testing out fringe cases, while at the same time working on i
                           'Multislice Resolution in Pixels': 1024,
                           'Domain Size': 150e-9,  # Width of images in metres
                           'Noise Level': [0.00, 0.01],
-                          'Defocus': 10e-6,
+                          'Defocus': [10e-6 10e-6,
                           'Error Limits': [-3, 3],
                           'Phase Limits': [-3, 3],
                           'Image Limits': [0, 2]
@@ -300,12 +310,13 @@ Because I am often testing out fringe cases, while at the same time working on i
                            }
     
     paths = {'Experimental Data Path': './data/images/experimental/',
-             'Image Output Path': './data/images/',
-             'Phase Output Path': './data/images/',
-             'Error Output Path': './data/images/',
-             'Load Model Path': './data/images/',
-             'Save Model Path': './data/images/',
-             'Specimen Input Path': './data/specimens/'}
+             'Image Output Path': './data/output/',
+             'Phase Output Path': './data/output/',
+             'Error Output Path': './data/output/',
+             'Load Model Path': './data/output/',
+             'Save Model Path': './data/output/',
+             'Specimen Input Path': './data/specimens/',
+             'Details Output Path': './data/output/details/'}
 
 # Files
 
