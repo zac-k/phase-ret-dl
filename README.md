@@ -47,7 +47,7 @@ One input and one output vector constitutes one training pair. A large number of
 
 The master branch. Should contain complete code with all parameters documented in this README. Some of the code is not fully implemented, but these parts are clearly explained in this README. Example settings are complete. If there are any problems, please let me know and I will fix them as soon as I have a chance.
 
-##dev
+## dev
 
 The development branch. This contains functionality that I'm currently working on, sometimes including very useful capabilities that are not available in the master branch. This is usually the version I use myself, so it should be mostly working, but not all parameters are guaranteed to be documented in this README, and the example settings may not contain all parameters that are required, so you may need to experiment to get it to do what you want. Only use this branch if the functionality you want to use is not available in the master branch or if you want to contribute to the repository.
 
