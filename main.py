@@ -175,7 +175,7 @@ hyperparameters = {'Hidden Layer Size': [50000],
                    'Input Type': 'phases',
                    'Number of Images': 2,
                    'Train with In-focus Image': False,  # False has no effect if n_images == 3
-                   'Train/Valid/Test Split': [5, 0, 1],
+                   'Train/Valid/Test Split': [5000, 0, 200],
                    'Start Number': 0,  # Specimen number to start the training set at
                    'Batch Size': 50,
                    'Optimiser Type': 'gradient descent',
@@ -217,13 +217,13 @@ specimen_parameters = {'Use Electrostatic/Magnetic Potential': [True, False],
                        'Density': 5.18  # g/cm^3
                        }
 paths = {'Experimental Data Path': './data/images/experimental/',
-         'Image Output Path': './data/figures/',
-         'Phase Output Path': './data/figures/',
-         'Error Output Path': './data/figures/',
-         'Load Model Path': './data/figures/',
-         'Save Model Path': './data/figures/',
+         'Image Output Path': './data/output/',
+         'Phase Output Path': './data/output/',
+         'Error Output Path': './data/output/',
+         'Load Model Path': './data/output/',
+         'Save Model Path': './data/output/',
          'Specimen Input Path': './data/specimens/training4/',
-         'Details Output Path': './data/figures/details/'}
+         'Details Output Path': './data/output/details/'}
 
 varied_quantities = []
 for i in range(3):
