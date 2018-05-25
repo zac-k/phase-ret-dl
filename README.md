@@ -9,6 +9,7 @@ Phase retrieval using deep learning (phase-ret-dl)
 # Table of contents
 
 * [Introduction](#introduction)
+* [Branches](#branches)
 * [System requirements](#system-requirements)
 * [Parameters](#parameters)
     * [Hyperparameters](#hyperparameters)
@@ -38,7 +39,17 @@ The process begins by simulating two out-of-focus images (and one in-focus, if s
 
 The ANN has input layer of size n_images*m<sup>2</sup>---where m is the width of each image in pixels, and n_images is one for the phase input method, and two or three for the image input method---and the output layer is size m<sup>2</sup>. The images (or phase) are flattened and joined end-to-end to form the input vector. The projected potential is scaled to form an 'exact phase', which is also flattened, and is used as the output vector for training the ANN.
 
-One input and one output vector constitutes one training pair. A large number of these pairs are generated, and the ANN is trained on these pairs in batches. After training, the ANN can be used to process a test set of input images or phases (depending on which was used in the training). If simulated images are used for the test set, root-mean-square (rms) errors are computed for each output by comparing it with the exact phase. Average rms errors are calculated for the entire set. 
+One input and one output vector constitutes one training pair. A large number of these pairs are generated, and the ANN is trained on these pairs in batches. After training, the ANN can be used to process a test set of input images or phases (depending on which was used in the training). If simulated images are used for the test set, root-mean-square (rms) errors are computed for each output by comparing it with the exact phase. Average rms errors are calculated for the entire set.
+
+# Branches
+
+## master
+
+The master branch. Should contain complete code with all parameters documented in this README. Some of the code is not fully implemented, but these parts are clearly explained in this README. Example settings are complete. If there are any problems, please let me know and I will fix them as soon as I have a chance.
+
+##dev
+
+The development branch. This contains functionality that I'm currently working on, sometimes including very useful capabilities that are not available in the master branch. This is usually the version I use myself, so it should be mostly working, but not all parameters are guaranteed to be documented in this README, and the example settings may not contain all parameters that are required, so you may need to experiment to get it to do what you want. Only use this branch if the functionality you want to use is not available in the master branch or if you want to contribute to the repository.
 
 # System requirements
 
