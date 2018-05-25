@@ -172,17 +172,19 @@ np.set_printoptions(threshold=np.inf)
 # image for training, and processing the test images, otherwise they are only used for
 # the TIE.
 hyperparameters = {'Hidden Layer Size': [50000],
-                   'Input Type': 'images',
+                   'Input Type': 'phases',
                    'Number of Images': 2,
                    'Train with In-focus Image': False,  # False has no effect if n_images == 3
-                   'Train/Valid/Test Split': [5000, 0, 100],
-                   'Start Number': 3803,  # Specimen number to start the training set at
-                   'Batch Size': 50,                   'Optimiser Type': 'gradient descent',
+                   'Train/Valid/Test Split': [5, 0, 1],
+                   'Start Number': 0,  # Specimen number to start the training set at
+                   'Batch Size': 50,
+                   'Optimiser Type': 'gradient descent',
                    'Learning Rate': 0.5,
                    'Activation Functions': [tf.nn.tanh],
                    'Use Convolutional Layers': False,
                    'Number of Epochs': 50,
-                   'Initialisation Type': 'identity'
+                   'Initialisation Type': 'identity',
+                   'Specify Parameters':  []  # Only Defocus implemented currently
                    }
 # 'Pre-remove Offest' removes the mean difference between the exact and retrieved phases for both
 # the training and test sets. Will not work with experimental images.
@@ -191,7 +193,7 @@ simulation_parameters = {'Pre-remove Offset': False,
                          'Misalignment': [False, False, False],  # rotation, scale, translation
                          'Rotation/Scale/Shift': [5, 0.01, 0.01],  # Rotation is in degrees
                          'Rotation/Scale/Shift Mode': ['uniform', 'uniform', 'uniform'],  # 'uniform' or 'gaussian'
-                         'Load Model': False,
+                         'Load/Retrain Model': [False, False],  # Retrain not working yet.
                          'Experimental Test Data': False,
                          'Retrieve Phase Component': 'electrostatic',  # 'total', 'electrostatic', or 'magnetic'
                          }
@@ -237,6 +239,7 @@ if specimen_parameters['Mean Inner Potential'][0].imag != specimen_parameters['M
     varied_quantities.append('imaginary potential')
 
 print("The following quantities will be varied: ", varied_quantities)
+print("The following quantities will be specified: ", hyperparameters['Specify Parameters'])
 
 pathlib.Path(paths['Details Output Path']).mkdir(parents=True, exist_ok=True)
 for i in simulation_parameters['Rotation/Scale/Shift Mode']:
@@ -304,7 +307,7 @@ specimen_name = 'particle'
 for i in range(num_train + num_test):
     specimen_files.append(specimen_path + specimen_name + '(' + str(i + num_start) + ')' + specimen_ext)
 
-if not simulation_parameters['Load Model']:
+if not simulation_parameters['Load/Retrain Model'][0]:
     # Compute retrieved training phases and flatten training data
     print('Generating training data...')
     train_generate_bar = pyprind.ProgBar(num_train, stream=sys.stdout)
@@ -399,6 +402,8 @@ if not simulation_parameters['Load Model']:
             elif n_images == 2:
                 image_flat_train.append(np.concatenate((system_train.image_under.real.reshape(img_size_flat),
                                         system_train.image_over.real.reshape(img_size_flat))))
+        if 'Defocus' in hyperparameters['Specify Parameters']:
+            image_flat_train.append(local_defocus)
 
     # Define average error in training set, calculate it, and print output.
     if input_type == 'phases':
@@ -412,6 +417,7 @@ phase_retrieved_flat_test = []
 image_flat_test = []
 
 # Compute retrieved test phases and flatten test data
+
 print("Generating test data...")
 test_generate_bar = pyprind.ProgBar(num_test, stream=sys.stdout)
 for item in range(num_train, num_test + num_train):
@@ -512,6 +518,8 @@ for item in range(num_train, num_test + num_train):
         else:
             image_flat_test.append(np.concatenate((system_test.image_under.real.reshape(img_size_flat),
                                    system_test.image_over.real.reshape(img_size_flat))))
+    if 'Defocus' in hyperparameters['Specify Parameters']:
+        image_flat_test.append(local_defocus)
 
 # Calculate and print average normalised rms error in test set prior to processing
 # through neural network
@@ -527,10 +535,10 @@ if input_type in ['images', 'dual']:
     else:
         n_training_images = n_images
 
-    input_size = n_training_images * img_size_flat
+    input_size = n_training_images * img_size_flat + len(hyperparameters['Specify Parameters'])
     num_channels = n_training_images
 elif input_type == 'phases':
-    input_size = img_size_flat
+    input_size = img_size_flat + len(hyperparameters['Specify Parameters'])
     num_channels = 1
 
 # Define placeholder variables
@@ -603,24 +611,27 @@ elif input_type == 'phases':
 elif input_type == 'dual':
     feed_dict_test = {x: image_flat_train,
                       y_true: phase_exact_flat_train}
-if simulation_parameters['Load Model']:
-    saver.restore(session, load_model_path + 'model')
 
+if simulation_parameters['Load/Retrain Model'][0]:
+    saver.restore(session, load_model_path + 'model')
+    if simulation_parameters['Load/Retrain Model'][1]:
+        # Initialise variables
+        session.run(tf.global_variables_initializer())
+
+        # Calculate the mean of the training data for later use
+        mean_exact_train = np.mean(phase_exact_flat_train, axis=0)
+
+        # Train the model
+        train_model(hyperparameters)
 else:
     # Initialise variables
     session.run(tf.global_variables_initializer())
 
-
-
-
-
     # Calculate the mean of the training data for later use
     mean_exact_train = np.mean(phase_exact_flat_train, axis=0)
 
-
     # Train the model
     train_model(hyperparameters)
-
 
 if input_type == 'dual':
     feed_dict_train2 = {
@@ -641,7 +652,7 @@ output_images = session.run(output, feed_dict=feed_dict_test)
 
 # Calculate average rms error between test outputs and the mean of the
 # training target images (exact phases) and print it
-if not simulation_parameters['Load Model']:
+if not simulation_parameters['Load/Retrain Model'][0]:
     error_test_vs_train = 0
     for output_image in output_images:
         error_test_vs_train += np.sqrt(
@@ -656,7 +667,7 @@ if not simulation_parameters['Experimental Test Data']:
     error_ret = (np.array(phase_retrieved_flat_test) - np.array(phase_exact_flat_test)).tolist()
     error_adj = (np.array(output_images) - np.array(phase_exact_flat_test)).tolist()
 
-if not simulation_parameters['Load Model']:
+if not simulation_parameters['Load/Retrain Model'][0]:
     print("Saving phases from training set...")
     train_phase_save_bar = pyprind.ProgBar(n_savefile_sets[0], stream=sys.stdout)
     for i in range(n_savefile_sets[0]):
@@ -711,7 +722,7 @@ if not simulation_parameters['Experimental Test Data']:
         test_details_file.write("Accuracy on test input " + str(i) + "(adjusted): {0: .1%}".format(acc[i]) + '\n')
         test_details_file.close
 
-if not simulation_parameters['Load Model']:
+if not simulation_parameters['Load/Retrain Model'][0]:
     for i in range(num_train):
         error_train = utils.normalised_rms_error(phase_exact_flat_train[i], phase_retrieved_flat_train[i])
         f.write("Accuracy on training input " + str(i) + ": {0: .1%}".format(error_train) + '\n')
@@ -722,7 +733,7 @@ if not simulation_parameters['Load Model']:
 f.close()
 
 # Save trained model
-if not simulation_parameters['Load Model']:
+if not simulation_parameters['Load/Retrain Model'][0] or simulation_parameters['Load/Retrain Model'][1]:
     saver.save(session, save_model_path + 'model')
 
 #utils.beep()  # Alert user that script has finished
