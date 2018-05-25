@@ -57,7 +57,16 @@ def single():
 def multiple():
 
     # List of input filenames
-    filenames = ['errors0.txt','errors20.txt','errors30.txt', 'errors40.txt', 'errors60.txt', 'errors80.txt', 'errors100.txt']
+    filenames = ['errors0.txt',
+                 'errors20.txt',
+                 'errors30.txt',
+                 'errors40.txt',
+                 'errors50.txt',
+                 'errors60.txt',
+                 'errors70.txt',
+                 'errors80.txt',
+                 'errors90.txt',
+                 'errors100.txt']
 
     # Iterate over the files and extract the TIE and ANN errors into two
     # separate lists of lists.
@@ -88,5 +97,5 @@ def multiple():
         writer = csv.writer(output, lineterminator='\n')
         writer.writerows(ann)
 
-single()
+multiple()
 
