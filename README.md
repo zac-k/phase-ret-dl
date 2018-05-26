@@ -271,7 +271,7 @@ Location that must contain the specimen files.
 
 ## Example settings
 
-Because I am often testing out fringe cases, while at the same time working on improving the code and expanding its functionality, the parameters in the latest version may not be a good starting place for newcomers wanting to understand the process and the code. Here, I am including a set of parameters that 
+Because I am often testing out fringe cases, while at the same time working on improving the code and expanding its functionality, the parameters in the latest version may not be a good starting place for newcomers wanting to understand the process and the code. Here, I am including a set of parameters that will simulate images, and train and test the ANN, with good results. The only other thing you will need here is the specimen files. The program will take some time to execute using the settings below, so I suggest setting the Train/Valid/Test Split to something small like `[5, 0, 2]` initially so you can confirm that everything is set up correctly.
 
     hyperparameters = {'Hidden Layer Size': [50000],
                        'Input Type': 'images',
