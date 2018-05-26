@@ -22,7 +22,7 @@ def normalised_rms_error(exact, reconstructed):
     for i in range(len_flat):
         total += (exact[i] - reconstructed[i]) * (exact[i] - reconstructed[i])
         norm += exact[i] * exact[i]
-    return np.sqrt(total / norm)
+    return np.sqrt(total / norm), np.sqrt(norm)
 
 
 def average_normalised_rms_error_flat(exact_flat, reconstructed_flat):
@@ -41,10 +41,11 @@ def average_normalised_rms_error_flat(exact_flat, reconstructed_flat):
 
     n_examples = len(exact_flat)
     error = np.zeros(n_examples)
+    rms = np.zeros(n_examples)
     for i in range(n_examples):
-        error[i] = normalised_rms_error(exact_flat[i],
+        error[i], rms[i] = normalised_rms_error(exact_flat[i],
                                       reconstructed_flat[i])
-    output = [np.mean(error), np.std(error, ddof=0)]
+    output = [np.mean(error), np.std(error, ddof=0), np.mean(rms), np.std(rms, ddof=0)]
     return output
 
 

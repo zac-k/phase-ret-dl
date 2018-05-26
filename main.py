@@ -175,8 +175,8 @@ hyperparameters = {'Hidden Layer Size': [50000],
                    'Input Type': 'phases',
                    'Number of Images': 2,
                    'Train with In-focus Image': False,  # False has no effect if n_images == 3
-                   'Train/Valid/Test Split': [5000, 0, 200],
-                   'Start Number': 0,  # Specimen number to start the training set at
+                   'Train/Valid/Test Split': [2, 0, 200],
+                   'Start Number': 4998,  # Specimen number to start the training set at
                    'Batch Size': 50,
                    'Optimiser Type': 'gradient descent',
                    'Learning Rate': 0.5,
@@ -199,7 +199,7 @@ simulation_parameters = {'Pre-remove Offset': False,
                          }
 imaging_parameters = {'Window Function Radius': 0.5,
                       'Accelerating Voltage': 300,  # electron accelerating voltage in keV
-                      'Use Multislice': True,
+                      'Use Multislice': False,
                       'Multislice Method': 'files',
                       'Multislice Wavefield Path': 'D:/code/images/multislice/',
                       'Image Size in Pixels': 64,
@@ -410,6 +410,8 @@ if not simulation_parameters['Load/Retrain Model'][0]:
         error_train_ave = utils.average_normalised_rms_error_flat(phase_exact_flat_train, phase_retrieved_flat_train)
         print("Average accuracy on ", "training", "-set: {0: .1%}".format(error_train_ave[0]) + " +/- {0: .1%}".format(error_train_ave[1]), sep='')
         f.write("Average accuracy on training-set: {0: .1%}".format(error_train_ave[0]) + " +/- {0: .1%}".format(error_train_ave[1]) + '\n')
+        f.write("Average RMS value on training-set: {0: .1}".format(error_train_ave[2]) + " +/- {0: .1%}".format(
+            error_train_ave[3]) + '\n')
 
 # Create arrays to hold flattened test data
 phase_exact_flat_test = []
@@ -527,6 +529,8 @@ if len(phase_exact_flat_test) > 0 and not simulation_parameters['Experimental Te
     error_pre_adj = utils.average_normalised_rms_error_flat(phase_exact_flat_test, phase_retrieved_flat_test)
     print("Accuracy on test set (pre adjustment): {0: .1%}".format(error_pre_adj[0]) + " +/- {0: .1%}".format(error_pre_adj[1]))
     f.write("Accuracy on test set (pre adjustment): {0: .1%}".format(error_pre_adj[0]) + " +/- {0: .1%}".format(error_pre_adj[1]) + '\n')
+    f.write("Average RMS value on test set: {0: .1}".format(error_pre_adj[2]) + " +/- {0: .1%}".format(
+        error_pre_adj[3]) + '\n')
 
 # Determine number of nodes in input layer
 if input_type in ['images', 'dual']:
@@ -706,9 +710,10 @@ errors = pd.DataFrame({})
 
 if not simulation_parameters['Experimental Test Data']:
     for i in range(num_test):
-        error_test = utils.normalised_rms_error(phase_exact_flat_test[i], phase_retrieved_flat_test[i])
+        error_test, rms_test = utils.normalised_rms_error(phase_exact_flat_test[i], phase_retrieved_flat_test[i])
         f.write("Accuracy on test input " + str(i) + ": {0: .1%}".format(error_test) + '\n')
         test_details_file = open(paths['Details Output Path'] + 'test_' + str(i) + '.txt', 'a')
+        test_details_file.write("RMS value of test target " + str(i) + ": {0: .1%}".format(rms_test) + '\n')
         test_details_file.write("Accuracy on test input " + str(i) + ": {0: .1%}".format(error_test) + '\n')
         test_details_file.close
 
@@ -724,9 +729,10 @@ if not simulation_parameters['Experimental Test Data']:
 
 if not simulation_parameters['Load/Retrain Model'][0]:
     for i in range(num_train):
-        error_train = utils.normalised_rms_error(phase_exact_flat_train[i], phase_retrieved_flat_train[i])
+        error_train, rms_train = utils.normalised_rms_error(phase_exact_flat_train[i], phase_retrieved_flat_train[i])
         f.write("Accuracy on training input " + str(i) + ": {0: .1%}".format(error_train) + '\n')
         train_details_file = open(paths['Details Output Path'] + 'train_' + str(i) + '.txt', 'a')
+        train_details_file.write("RMS value of training target " + str(i) + ": {0: .1%}".format(rms_train) + '\n')
         train_details_file.write("Accuracy on training input " + str(i) + ": {0: .1%}".format(error_train) + '\n')
         train_details_file.close
 
