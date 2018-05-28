@@ -111,14 +111,15 @@ def train_model(hyperparameters):
     for q in range(num_epochs):
         for i in range(num_batches):
             train_bar.update()
-            if (i + 1) * batch_size < num_train:
-                if hyperparameters['Input Type'] == 'images':
-                    x_batch = image_flat_train[i * batch_size: (i + 1) * batch_size]
-                elif hyperparameters['Input Type'] == 'phases':
-                    x_batch = phase_retrieved_flat_train[i * batch_size: (i + 1) * batch_size]
-                y_true_batch = phase_exact_flat_train[i * batch_size: (i + 1) * batch_size]
-                feed_dict_train = {x: x_batch,
-                                   y_true: y_true_batch}
+            with session.as_default():
+                if (i + 1) * batch_size < num_train:
+                    if hyperparameters['Input Type'] == 'images':
+                        x_batch = image_flat_train[i * batch_size: (i + 1) * batch_size]
+                    elif hyperparameters['Input Type'] == 'phases':
+                        x_batch = phase_retrieved_flat_train[i * batch_size: (i + 1) * batch_size].eval()
+                    y_true_batch = phase_exact_flat_train[i * batch_size: (i + 1) * batch_size].eval()
+                    feed_dict_train = {x: x_batch,
+                                       y_true: y_true_batch}
 
                 session.run(optimizer, feed_dict=feed_dict_train)
 
@@ -176,7 +177,7 @@ hyperparameters = {'Hidden Layer Size': [50000],
                    'Input Type': 'images',
                    'Number of Images': 2,
                    'Train with In-focus Image': False,  # False has no effect if n_images == 3
-                   'Train/Valid/Test Split': [5, 0, 2],
+                   'Train/Valid/Test Split': [100, 0, 2],
                    'Start Number': 200,  # Specimen number to start the training set at
                    'Batch Size': 50,
                    'Optimiser Type': 'adam',
