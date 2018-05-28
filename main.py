@@ -176,7 +176,7 @@ hyperparameters = {'Hidden Layer Size': [50000],
                    'Input Type': 'images',
                    'Number of Images': 2,
                    'Train with In-focus Image': False,  # False has no effect if n_images == 3
-                   'Train/Valid/Test Split': [2, 0, 2],
+                   'Train/Valid/Test Split': [5, 0, 2],
                    'Start Number': 200,  # Specimen number to start the training set at
                    'Batch Size': 50,
                    'Optimiser Type': 'adam',
@@ -299,8 +299,8 @@ n_images = hyperparameters['Number of Images']
 assert n_images == 2 or n_images == 3
 
 # Create arrays to hold flattened training data
-phase_exact_flat_train = tf.zeros([0,img_size_flat], tf.float32)
-phase_retrieved_flat_train = []
+phase_exact_flat_train = tf.zeros([0, img_size_flat], tf.float32)
+phase_retrieved_flat_train = tf.zeros([0, img_size_flat], tf.float32)
 image_flat_train = []
 
 # Set quantities for training/validation/test split
@@ -365,21 +365,19 @@ if not simulation_parameters['Load/Retrain Model'][0]:
         if specimen_parameters['Use Electrostatic/Magnetic Potential'][0] and \
            specimen_parameters['Use Electrostatic/Magnetic Potential'][1]:
             if simulation_parameters['Retrieve Phase Component'] == 'magnetic':
-                phase_exact_flat_train = tf.concat([phase_exact_flat_train, tf.constant(
-                    system_train.phase_magnetic.real.reshape(img_size_flat))], 1)
+                phase_exact_flat_train = tf.concat([phase_exact_flat_train, ft.expand_dims(tf.constant(
+                    system_train.phase_magnetic.real.reshape(img_size_flat), tf.float32), 0)], 0)
             elif simulation_parameters['Retrieve Phase Component'] == 'electrostatic':
-                phase_exact_flat_train = tf.concat([phase_exact_flat_train, tf.constant(
-                    system_train.phase_electrostatic.real.reshape(img_size_flat))], 1)
+                phase_exact_flat_train = tf.concat([phase_exact_flat_train, ft.expand_dims(tf.constant(
+                    system_train.phase_electrostatic.real.reshape(img_size_flat), tf.float32), 0)], 0)
             else:
-                phase_exact_flat_train = tf.concat(
-                    [phase_exact_flat_train, tf.constant(system_train.phase_exact.real.reshape(img_size_flat))],
-                     1)
+                phase_exact_flat_train = tf.concat([phase_exact_flat_train, ft.expand_dims(tf.constant(
+                    system_train.phase_exact.real.reshape(img_size_flat), tf.float32), 0)], 0)
         else:
             phase_exact_flat_train = tf.concat([phase_exact_flat_train,tf.expand_dims(tf.constant(
                 system_train.phase_exact.real.reshape(img_size_flat), tf.float32), 0)], 0)
-        phase_retrieved_flat_train.append(system_train.phase_retrieved.real.reshape(img_size_flat))
-        print(phase_exact_flat_train)
-        print(np.shape(phase_retrieved_flat_train))
+        phase_retrieved_flat_train = tf.concat([phase_retrieved_flat_train, tf.expand_dims(tf.constant(
+            system_train.phase_retrieved.real.reshape(img_size_flat), tf.float32), 0)], 0)
         if item < n_savefile_sets[0]:
             plot.save_image(system_train.image_under,
                             image_output_path + 'image_train_under_' + str(item) + '.png',
@@ -428,8 +426,8 @@ if not simulation_parameters['Load/Retrain Model'][0]:
             error_train_ave[3]) + '\n')
 
 # Create arrays to hold flattened test data
-phase_exact_flat_test = []
-phase_retrieved_flat_test = []
+phase_exact_flat_test = tf.zeros([0, img_size_flat], tf.float32)
+phase_retrieved_flat_test = tf.zeros([0, img_size_flat], tf.float32)
 image_flat_test = []
 
 # Compute retrieved test phases and flatten test data
@@ -488,14 +486,19 @@ for item in range(num_train, num_test + num_train):
     if specimen_parameters['Use Electrostatic/Magnetic Potential'][0] and \
             specimen_parameters['Use Electrostatic/Magnetic Potential'][1]:
         if simulation_parameters['Retrieve Phase Component'] == 'magnetic':
-            phase_exact_flat_test.append(system_test.phase_magnetic.real.reshape(img_size_flat))
+            phase_exact_flat_test = tf.concat([phase_exact_flat_test, tf.expand_dims(tf.constant(
+                system_test.phase_magnetic.real.reshape(img_size_flat), tf.float32), 0)], 0)
         elif simulation_parameters['Retrieve Phase Component'] == 'electrostatic':
-            phase_exact_flat_test.append(system_test.phase_electrostatic.real.reshape(img_size_flat))
+            phase_exact_flat_test = tf.concat([phase_exact_flat_test, tf.expand_dims(tf.constant(
+                system_test.phase_electrostatic.real.reshape(img_size_flat), tf.float32), 0)], 0)
         else:
-            phase_exact_flat_test.append(system_test.phase_exact.real.reshape(img_size_flat))
+            phase_exact_flat_test = tf.concat([phase_exact_flat_test, tf.expand_dims(tf.constant(
+                system_test.phase_exact.real.reshape(img_size_flat), tf.float32), 0)], 0)
     else:
-        phase_exact_flat_test.append(system_test.phase_exact.real.reshape(img_size_flat))
-    phase_retrieved_flat_test.append(system_test.phase_retrieved.real.reshape(img_size_flat))
+        phase_exact_flat_test = tf.concat([phase_exact_flat_test, tf.expand_dims(tf.constant(
+            system_test.phase_exact.real.reshape(img_size_flat), tf.float32), 0)], 0)
+    phase_retrieved_flat_test = tf.concat([phase_retrieved_flat_test, tf.expand_dims(tf.constant(
+        system_test.phase_retrieved.real.reshape(img_size_flat), tf.float32), 0)], 0)
     if item < n_savefile_sets[2] + num_train:
         plot.save_image(system_test.image_under,
                         image_output_path + 'image_test_under_' + str(item - num_train) + '.png',
@@ -537,14 +540,7 @@ for item in range(num_train, num_test + num_train):
     if 'Defocus' in hyperparameters['Specify Parameters']:
         image_flat_test.append(local_defocus)
 
-# Calculate and print average normalised rms error in test set prior to processing
-# through neural network
-if len(phase_exact_flat_test) > 0 and not simulation_parameters['Experimental Test Data']:
-    error_pre_adj = utils.average_normalised_rms_error_flat(phase_exact_flat_test, phase_retrieved_flat_test)
-    print("Accuracy on test set (pre adjustment): {0: .1%}".format(error_pre_adj[0]) + " +/- {0: .1%}".format(error_pre_adj[1]))
-    f.write("Accuracy on test set (pre adjustment): {0: .1%}".format(error_pre_adj[0]) + " +/- {0: .1%}".format(error_pre_adj[1]) + '\n')
-    f.write("Average RMS value on test set: {0: 5}".format(error_pre_adj[2]) + " +/- {0: .5}".format(
-        error_pre_adj[3]) + '\n')
+
 
 # Determine number of nodes in input layer
 if input_type in ['images', 'dual']:
@@ -618,17 +614,19 @@ session = tf.Session()
 saver = tf.train.Saver()
 
 # Define feed dict for test set
-if input_type == 'images':
-    feed_dict_test = {x: image_flat_test,
-                      y_true: phase_exact_flat_test
-                      }
-elif input_type == 'phases':
-    feed_dict_test = {x: phase_retrieved_flat_test,
-                      y_true: phase_exact_flat_test
-                      }
-elif input_type == 'dual':
-    feed_dict_test = {x: image_flat_train,
-                      y_true: phase_exact_flat_train}
+with session.as_default():
+    if input_type == 'images':
+        feed_dict_test = {x: image_flat_test,
+                          y_true: phase_exact_flat_test.eval()
+                          }
+    elif input_type == 'phases':
+        feed_dict_test = {x: phase_retrieved_flat_test,
+                          y_true: phase_exact_flat_test.eval()
+                          }
+    elif input_type == 'dual':
+        feed_dict_test = {x: image_flat_train,
+                          y_true: phase_exact_flat_train.eval()
+                          }
 
 if simulation_parameters['Load/Retrain Model'][0]:
     saver.restore(session, load_model_path + 'model')
@@ -657,11 +655,22 @@ if input_type == 'dual':
 
     }
 
+# Calculate and print average normalised rms error in test set prior to processing
+# through neural network
+with session.as_default():
+    if num_test > 0 and not simulation_parameters['Experimental Test Data']:
+        error_pre_adj = utils.average_normalised_rms_error_flat(phase_exact_flat_test.eval(), phase_retrieved_flat_test.eval())
+        print("Accuracy on test set (pre adjustment): {0: .1%}".format(error_pre_adj[0]) + " +/- {0: .1%}".format(error_pre_adj[1]))
+        f.write("Accuracy on test set (pre adjustment): {0: .1%}".format(error_pre_adj[0]) + " +/- {0: .1%}".format(error_pre_adj[1]) + '\n')
+        f.write("Average RMS value on test set: {0: 5}".format(error_pre_adj[2]) + " +/- {0: .5}".format(
+            error_pre_adj[3]) + '\n')
 
 # Calculate and print average normalised rms error in test set after processing through
 # trained neural network
 error = tf.sqrt(tf.reduce_sum(tf.squared_difference(y_true, output), 1) / tf.reduce_sum(tf.square(y_true), 1))
 accuracy_mean, accuracy_var = tf.nn.moments(error, axes=[0])  # tf.reduce_mean(error)
+
+
 acc, var, x_val = session.run([accuracy_mean, accuracy_var, x], feed_dict=feed_dict_test)
 print("Accuracy on ", "test", "-set (post-adjustment): {0: .1%}".format(acc) + " +/- {0: .1%}".format(np.sqrt(var)), sep='')
 f.write("Accuracy on test-set (post-adjustment): {0: .1%}".format(acc) + " +/- {0: .1%}".format(np.sqrt(var)) + '\n')
@@ -683,8 +692,8 @@ if not simulation_parameters['Experimental Test Data']:
     #print("Accuracy on ", "test input", " compared to training output: {0: .1%}".format(error_test_vs_train), sep='')
     #f.write("Accuracy on test input compared to training output: {0: .1%}".format(error_test_vs_train) + '\n')
 
-    error_ret = (np.array(phase_retrieved_flat_test) - np.array(phase_exact_flat_test)).tolist()
-    error_adj = (np.array(output_images) - np.array(phase_exact_flat_test)).tolist()
+    error_ret = phase_retrieved_flat_test - phase_exact_flat_test
+    error_adj = output_images - phase_exact_flat_test
 
 if not simulation_parameters['Load/Retrain Model'][0]:
     print("Saving phases from training set...")
@@ -695,30 +704,31 @@ if not simulation_parameters['Load/Retrain Model'][0]:
             plot.save_image(tf.reshape(phase_exact_flat_train[i], img_shape).eval(),
                             phase_output_path + 'phase_exact_train_' + str(i) + '.png',
                             imaging_parameters['Phase Limits'])
-        plot.save_image(np.reshape(phase_retrieved_flat_train[i], img_shape),
-                        phase_output_path + 'phase_retrieved_train_' + str(i) + '.png',
-                        imaging_parameters['Phase Limits'])
+            plot.save_image(tf.reshape(phase_retrieved_flat_train[i], img_shape).eval(),
+                            phase_output_path + 'phase_retrieved_train_' + str(i) + '.png',
+                            imaging_parameters['Phase Limits'])
 
 print("Saving phases and errors from test set...")
 test_phase_save_bar = pyprind.ProgBar(n_savefile_sets[2], stream=sys.stdout)
 for i in range(n_savefile_sets[2]):
     test_phase_save_bar.update()
-    if not simulation_parameters['Experimental Test Data']:
-        plot.save_image(np.reshape(phase_exact_flat_test[i], img_shape),
-                        phase_output_path + 'phase_exact_test_' + str(i) + '.png',
+    with session.as_default():
+        if not simulation_parameters['Experimental Test Data']:
+            plot.save_image(tf.reshape(phase_exact_flat_test[i], img_shape).eval(),
+                            phase_output_path + 'phase_exact_test_' + str(i) + '.png',
+                            imaging_parameters['Phase Limits'])
+            plot.save_image(tf.reshape(error_ret[i], img_shape).eval(),
+                            error_output_path + 'error_retrieved_test_' + str(i) + '.png',
+                            imaging_parameters['Error Limits'])
+            plot.save_image(tf.reshape(error_adj[i], img_shape).eval(),
+                            error_output_path + 'error_adjusted_test_' + str(i) + '.png',
+                            imaging_parameters['Error Limits'])
+        plot.save_image(tf.reshape(phase_retrieved_flat_test[i], img_shape).eval(),
+                        phase_output_path + 'phase_retrieved_test_' + str(i) + '.png',
                         imaging_parameters['Phase Limits'])
-        plot.save_image(np.reshape(error_ret[i], img_shape),
-                        error_output_path + 'error_retrieved_test_' + str(i) + '.png',
-                        imaging_parameters['Error Limits'])
-        plot.save_image(np.reshape(error_adj[i], img_shape),
-                        error_output_path + 'error_adjusted_test_' + str(i) + '.png',
-                        imaging_parameters['Error Limits'])
-    plot.save_image(np.reshape(phase_retrieved_flat_test[i], img_shape),
-                    phase_output_path + 'phase_retrieved_test_' + str(i) + '.png',
-                    imaging_parameters['Phase Limits'])
-    plot.save_image(np.reshape(output_images[i], img_shape),
-                    phase_output_path + 'phase_adjusted_test_' + str(i) + '.png',
-                    imaging_parameters['Phase Limits'])
+        plot.save_image(tf.reshape(output_images[i], img_shape).eval(),
+                        phase_output_path + 'phase_adjusted_test_' + str(i) + '.png',
+                        imaging_parameters['Phase Limits'])
 
 
 
@@ -726,7 +736,8 @@ errors = pd.DataFrame({})
 
 if not simulation_parameters['Experimental Test Data']:
     for i in range(num_test):
-        error_test, rms_test = utils.normalised_rms_error(phase_exact_flat_test[i], phase_retrieved_flat_test[i])
+        with session.as_default():
+            error_test, rms_test = utils.normalised_rms_error(phase_exact_flat_test[i].eval(), phase_retrieved_flat_test[i].eval())
         f.write("Accuracy on test input " + str(i) + ": {0: .1%}".format(error_test) + '\n')
         test_details_file = open(paths['Details Output Path'] + 'test_' + str(i) + '.txt', 'a')
         test_details_file.write("RMS value of test target " + str(i) + ": {0: .5}".format(rms_test) + '\n')
@@ -746,7 +757,7 @@ if not simulation_parameters['Experimental Test Data']:
 if not simulation_parameters['Load/Retrain Model'][0]:
     for i in range(num_train):
         with session.as_default():
-            error_train, rms_train = utils.normalised_rms_error(phase_exact_flat_train[i].eval(), phase_retrieved_flat_train[i])
+            error_train, rms_train = utils.normalised_rms_error(phase_exact_flat_train[i].eval(), phase_retrieved_flat_train[i].eval())
         f.write("Accuracy on training input " + str(i) + ": {0: .1%}".format(error_train) + '\n')
         train_details_file = open(paths['Details Output Path'] + 'train_' + str(i) + '.txt', 'a')
         train_details_file.write("RMS value of training target " + str(i) + ": {0: .5}".format(rms_train) + '\n')
