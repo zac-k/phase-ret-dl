@@ -8,6 +8,7 @@ import plot
 import phase
 import pandas as pd
 import pathlib
+import os.path
 
 # Thanks to Hvass-Labs' TensorFlow tutorials (https://github.com/Hvass-Labs/TensorFlow-Tutorials),
 # upon which much of this work is based
@@ -172,14 +173,14 @@ np.set_printoptions(threshold=np.inf)
 # image for training, and processing the test images, otherwise they are only used for
 # the TIE.
 hyperparameters = {'Hidden Layer Size': [50000],
-                   'Input Type': 'phases',
+                   'Input Type': 'images',
                    'Number of Images': 2,
                    'Train with In-focus Image': False,  # False has no effect if n_images == 3
-                   'Train/Valid/Test Split': [2, 0, 200],
-                   'Start Number': 4998,  # Specimen number to start the training set at
+                   'Train/Valid/Test Split': [2, 0, 2],
+                   'Start Number': 200,  # Specimen number to start the training set at
                    'Batch Size': 50,
-                   'Optimiser Type': 'gradient descent',
-                   'Learning Rate': 0.5,
+                   'Optimiser Type': 'adam',
+                   'Learning Rate': 1e-4,
                    'Activation Functions': [tf.nn.tanh],
                    'Use Convolutional Layers': False,
                    'Number of Epochs': 50,
@@ -199,7 +200,7 @@ simulation_parameters = {'Pre-remove Offset': False,
                          }
 imaging_parameters = {'Window Function Radius': 0.5,
                       'Accelerating Voltage': 300,  # electron accelerating voltage in keV
-                      'Use Multislice': False,
+                      'Use Multislice': True,
                       'Multislice Method': 'files',
                       'Multislice Wavefield Path': 'D:/code/images/multislice/',
                       'Image Size in Pixels': 64,
@@ -224,6 +225,12 @@ paths = {'Experimental Data Path': './data/images/experimental/',
          'Save Model Path': './data/output/',
          'Specimen Input Path': './data/specimens/training4/',
          'Details Output Path': './data/output/details/'}
+
+load_model_path = paths['Load Model Path']
+if simulation_parameters['Load/Retrain Model'][0] and not (os.path.isfile(load_model_path + 'model.index')
+                                                        and os.path.isfile(load_model_path + 'model.data-00000-of-00001')):
+    print("Model files not found in model path!")
+    sys.exit()
 
 varied_quantities = []
 for i in range(3):
@@ -254,7 +261,8 @@ exp_path = paths['Experimental Data Path']
 image_output_path = paths['Image Output Path']
 phase_output_path = paths['Phase Output Path']
 error_output_path = paths['Error Output Path']
-load_model_path = paths['Load Model Path']
+
+
 save_model_path = paths['Save Model Path']
 f = open(error_output_path + 'errors.txt', 'w')
 
@@ -291,7 +299,7 @@ n_images = hyperparameters['Number of Images']
 assert n_images == 2 or n_images == 3
 
 # Create arrays to hold flattened training data
-phase_exact_flat_train = []
+phase_exact_flat_train = tf.zeros([0,img_size_flat], tf.float32)
 phase_retrieved_flat_train = []
 image_flat_train = []
 
@@ -357,15 +365,21 @@ if not simulation_parameters['Load/Retrain Model'][0]:
         if specimen_parameters['Use Electrostatic/Magnetic Potential'][0] and \
            specimen_parameters['Use Electrostatic/Magnetic Potential'][1]:
             if simulation_parameters['Retrieve Phase Component'] == 'magnetic':
-                phase_exact_flat_train.append(system_train.phase_magnetic.real.reshape(img_size_flat))
+                phase_exact_flat_train = tf.concat([phase_exact_flat_train, tf.constant(
+                    system_train.phase_magnetic.real.reshape(img_size_flat))], 1)
             elif simulation_parameters['Retrieve Phase Component'] == 'electrostatic':
-                phase_exact_flat_train.append(system_train.phase_electrostatic.real.reshape(img_size_flat))
+                phase_exact_flat_train = tf.concat([phase_exact_flat_train, tf.constant(
+                    system_train.phase_electrostatic.real.reshape(img_size_flat))], 1)
             else:
-                phase_exact_flat_train.append(system_train.phase_exact.real.reshape(img_size_flat))
+                phase_exact_flat_train = tf.concat(
+                    [phase_exact_flat_train, tf.constant(system_train.phase_exact.real.reshape(img_size_flat))],
+                     1)
         else:
-            phase_exact_flat_train.append(system_train.phase_exact.real.reshape(img_size_flat))
+            phase_exact_flat_train = tf.concat([phase_exact_flat_train,tf.expand_dims(tf.constant(
+                system_train.phase_exact.real.reshape(img_size_flat), tf.float32), 0)], 0)
         phase_retrieved_flat_train.append(system_train.phase_retrieved.real.reshape(img_size_flat))
-
+        print(phase_exact_flat_train)
+        print(np.shape(phase_retrieved_flat_train))
         if item < n_savefile_sets[0]:
             plot.save_image(system_train.image_under,
                             image_output_path + 'image_train_under_' + str(item) + '.png',
@@ -410,7 +424,7 @@ if not simulation_parameters['Load/Retrain Model'][0]:
         error_train_ave = utils.average_normalised_rms_error_flat(phase_exact_flat_train, phase_retrieved_flat_train)
         print("Average accuracy on ", "training", "-set: {0: .1%}".format(error_train_ave[0]) + " +/- {0: .1%}".format(error_train_ave[1]), sep='')
         f.write("Average accuracy on training-set: {0: .1%}".format(error_train_ave[0]) + " +/- {0: .1%}".format(error_train_ave[1]) + '\n')
-        f.write("Average RMS value on training-set: {0: .1}".format(error_train_ave[2]) + " +/- {0: .1%}".format(
+        f.write("Average RMS value on training-set: {0: .5}".format(error_train_ave[2]) + " +/- {0: .5}".format(
             error_train_ave[3]) + '\n')
 
 # Create arrays to hold flattened test data
@@ -529,7 +543,7 @@ if len(phase_exact_flat_test) > 0 and not simulation_parameters['Experimental Te
     error_pre_adj = utils.average_normalised_rms_error_flat(phase_exact_flat_test, phase_retrieved_flat_test)
     print("Accuracy on test set (pre adjustment): {0: .1%}".format(error_pre_adj[0]) + " +/- {0: .1%}".format(error_pre_adj[1]))
     f.write("Accuracy on test set (pre adjustment): {0: .1%}".format(error_pre_adj[0]) + " +/- {0: .1%}".format(error_pre_adj[1]) + '\n')
-    f.write("Average RMS value on test set: {0: .1}".format(error_pre_adj[2]) + " +/- {0: .1%}".format(
+    f.write("Average RMS value on test set: {0: 5}".format(error_pre_adj[2]) + " +/- {0: .5}".format(
         error_pre_adj[3]) + '\n')
 
 # Determine number of nodes in input layer
@@ -632,7 +646,8 @@ else:
     session.run(tf.global_variables_initializer())
 
     # Calculate the mean of the training data for later use
-    mean_exact_train = np.mean(phase_exact_flat_train, axis=0)
+    mean_exact_train = tf.reduce_mean(phase_exact_flat_train, axis=0)
+    print(mean_exact_train)
 
     # Train the model
     train_model(hyperparameters)
@@ -659,7 +674,7 @@ output_images = session.run(output, feed_dict=feed_dict_test)
 if not simulation_parameters['Load/Retrain Model'][0]:
     error_test_vs_train = 0
     for output_image in output_images:
-        error_test_vs_train += np.sqrt(
+        error_test_vs_train += tf.sqrt(
                             np.sum(np.square(mean_exact_train -
                                              output_image)) / np.sum(np.square(mean_exact_train))
                 )
@@ -676,9 +691,10 @@ if not simulation_parameters['Load/Retrain Model'][0]:
     train_phase_save_bar = pyprind.ProgBar(n_savefile_sets[0], stream=sys.stdout)
     for i in range(n_savefile_sets[0]):
         train_phase_save_bar.update()
-        plot.save_image(np.reshape(phase_exact_flat_train[i], img_shape),
-                        phase_output_path + 'phase_exact_train_' + str(i) + '.png',
-                        imaging_parameters['Phase Limits'])
+        with session.as_default():
+            plot.save_image(tf.reshape(phase_exact_flat_train[i], img_shape).eval(),
+                            phase_output_path + 'phase_exact_train_' + str(i) + '.png',
+                            imaging_parameters['Phase Limits'])
         plot.save_image(np.reshape(phase_retrieved_flat_train[i], img_shape),
                         phase_output_path + 'phase_retrieved_train_' + str(i) + '.png',
                         imaging_parameters['Phase Limits'])
@@ -713,7 +729,7 @@ if not simulation_parameters['Experimental Test Data']:
         error_test, rms_test = utils.normalised_rms_error(phase_exact_flat_test[i], phase_retrieved_flat_test[i])
         f.write("Accuracy on test input " + str(i) + ": {0: .1%}".format(error_test) + '\n')
         test_details_file = open(paths['Details Output Path'] + 'test_' + str(i) + '.txt', 'a')
-        test_details_file.write("RMS value of test target " + str(i) + ": {0: .1%}".format(rms_test) + '\n')
+        test_details_file.write("RMS value of test target " + str(i) + ": {0: .5}".format(rms_test) + '\n')
         test_details_file.write("Accuracy on test input " + str(i) + ": {0: .1%}".format(error_test) + '\n')
         test_details_file.close
 
@@ -729,10 +745,11 @@ if not simulation_parameters['Experimental Test Data']:
 
 if not simulation_parameters['Load/Retrain Model'][0]:
     for i in range(num_train):
-        error_train, rms_train = utils.normalised_rms_error(phase_exact_flat_train[i], phase_retrieved_flat_train[i])
+        with session.as_default():
+            error_train, rms_train = utils.normalised_rms_error(phase_exact_flat_train[i].eval(), phase_retrieved_flat_train[i])
         f.write("Accuracy on training input " + str(i) + ": {0: .1%}".format(error_train) + '\n')
         train_details_file = open(paths['Details Output Path'] + 'train_' + str(i) + '.txt', 'a')
-        train_details_file.write("RMS value of training target " + str(i) + ": {0: .1%}".format(rms_train) + '\n')
+        train_details_file.write("RMS value of training target " + str(i) + ": {0: .5}".format(rms_train) + '\n')
         train_details_file.write("Accuracy on training input " + str(i) + ": {0: .1%}".format(error_train) + '\n')
         train_details_file.close
 
