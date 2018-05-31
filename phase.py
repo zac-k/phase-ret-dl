@@ -2462,12 +2462,6 @@ class PhaseImagingSystem(object):
         self.image_under = self._transfer_image(defocus=-self.defocus, wavefunction=wavefunction, image=True)
         if n_images == 3:
             self.image_in = self._transfer_image(defocus=0, wavefunction=wavefunction, image=True)
-            while len(self.image_in) > self.image_size:
-                self.image_in = PhaseImagingSystem._downsample(self.image_in)
-        while len(self.image_under) > self.image_size:
-            self.image_under = PhaseImagingSystem._downsample(self.image_under)
-        while len(self.image_over) > self.image_size:
-            self.image_over = PhaseImagingSystem._downsample(self.image_over)
         if self.flipping:
             if self.use_multislice:
                 wavefunction = self.wave_multislice_hr
@@ -2477,6 +2471,24 @@ class PhaseImagingSystem(object):
             self.image_under_reverse = self._transfer_image(defocus=-self.defocus, wavefunction=wavefunction, image=True)
             if n_images == 3:
                 self.image_in_reverse = self._transfer_image(defocus=0, wavefunction=wavefunction, image=True)
+        return
+
+    def downsample_images(self, n_images):
+        assert n_images == 2 or n_images == 3
+        """
+        Compute images at under-, in-, and over-focus
+        :return:
+        """
+
+        if n_images == 3:
+            while len(self.image_in) > self.image_size:
+                self.image_in = PhaseImagingSystem._downsample(self.image_in)
+        while len(self.image_under) > self.image_size:
+            self.image_under = PhaseImagingSystem._downsample(self.image_under)
+        while len(self.image_over) > self.image_size:
+            self.image_over = PhaseImagingSystem._downsample(self.image_over)
+        if self.flipping:
+            if n_images == 3:
                 while len(self.image_in_reverse) > self.image_size:
                     self.image_in_reverse = PhaseImagingSystem._downsample(self.image_in_reverse)
             while len(self.image_under_reverse) > self.image_size:
