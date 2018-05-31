@@ -172,14 +172,14 @@ np.set_printoptions(threshold=np.inf)
 # image for training, and processing the test images, otherwise they are only used for
 # the TIE.
 hyperparameters = {'Hidden Layer Size': [50000],
-                   'Input Type': 'phases',
+                   'Input Type': 'images',
                    'Number of Images': 2,
                    'Train with In-focus Image': False,  # False has no effect if n_images == 3
-                   'Train/Valid/Test Split': [2, 0, 200],
-                   'Start Number': 4998,  # Specimen number to start the training set at
+                   'Train/Valid/Test Split': [1, 0, 2],
+                   'Start Number': 234,  # Specimen number to start the training set at
                    'Batch Size': 50,
-                   'Optimiser Type': 'gradient descent',
-                   'Learning Rate': 0.5,
+                   'Optimiser Type': 'adam',
+                   'Learning Rate': 1e-4,
                    'Activation Functions': [tf.nn.tanh],
                    'Use Convolutional Layers': False,
                    'Number of Epochs': 50,
@@ -194,25 +194,27 @@ simulation_parameters = {'Pre-remove Offset': False,
                          'Rotation/Scale/Shift': [5, 0.01, 0.01],  # Rotation is in degrees
                          'Rotation/Scale/Shift Mode': ['uniform', 'uniform', 'uniform'],  # 'uniform' or 'gaussian'
                          'Load/Retrain Model': [False, False],  # Retrain not working yet.
+                         'Use Training/Model/Test Data': [False, False, False],  # No effect if Load Model is False
                          'Experimental Test Data': False,
                          'Retrieve Phase Component': 'electrostatic',  # 'total', 'electrostatic', or 'magnetic'
                          }
 imaging_parameters = {'Window Function Radius': 0.5,
                       'Accelerating Voltage': 300,  # electron accelerating voltage in keV
-                      'Use Multislice': False,
+                      'Use Multislice': True,
                       'Multislice Method': 'files',
                       'Multislice Wavefield Path': 'D:/code/images/multislice/',
+                      'Output High Resolution Micrographs': True,
                       'Image Size in Pixels': 64,
                       'Multislice Resolution in Pixels': 1024,
                       'Domain Size': 150e-9,  # Width of images in metres
                       'Noise Level': [0.00, 0.00],
                       'Defocus': [10e-6, 10e-6],
                       'Error Limits': [-3, 3],
-                      'Phase Limits': [-3, 3],
+                      'Phase Limits': [-6, 6],
                       'Image Limits': [0, 2]
                       }
 specimen_parameters = {'Use Electrostatic/Magnetic Potential': [True, False],
-                       'Mean Inner Potential': [-17 + 1j, -17 +1j],
+                       'Mean Inner Potential': [-5 + 1j, -30 +1j],
                        'Mass Magnetization': 80,  # emu/g
                        'Density': 5.18  # g/cm^3
                        }
@@ -333,6 +335,18 @@ if not simulation_parameters['Load/Retrain Model'][0]:
                simulation_parameters=simulation_parameters,
                specimen_parameters=specimen_parameters)
         system_train.generate_images(n_images)
+        if imaging_parameters['Use Multislice'] and imaging_parameters['Output High Resolution Micrographs']:
+            plot.save_image(system_train.image_under,
+                            image_output_path + 'image_train_under_hr' + str(item) + '.png',
+                            imaging_parameters['Image Limits'])
+            plot.save_image(system_train.image_over,
+                            image_output_path + 'image_train_over_hr' + str(item) + '.png',
+                            imaging_parameters['Image Limits'])
+            if hyperparameters['Number of Images'] == 3:
+                plot.save_image(system_train.image_in,
+                            image_output_path + 'image_train_in_hr' + str(item) + '.png',
+                            imaging_parameters['Image Limits'])
+        system_train.downsample_images(n_images)
         if simulation_parameters['Misalignment'][0]:
             rot = system_train.rotate_images(std=simulation_parameters['Rotation/Scale/Shift'][0],
                                        mode=simulation_parameters['Rotation/Scale/Shift Mode'][0],
@@ -451,6 +465,18 @@ for item in range(num_train, num_test + num_train):
         system_test.image_in = (system_test.image_under + system_test.image_over) / 2
     else:
         system_test.generate_images(n_images)
+        if imaging_parameters['Use Multislice'] and imaging_parameters['Output High Resolution Micrographs']:
+            plot.save_image(system_test.image_under,
+                            image_output_path + 'image_test_under_hr' + str(item - num_train) + '.png',
+                            imaging_parameters['Image Limits'])
+            plot.save_image(system_test.image_over,
+                            image_output_path + 'image_test_over_hr' + str(item - num_train) + '.png',
+                            imaging_parameters['Image Limits'])
+            if hyperparameters['Number of Images'] == 3:
+                plot.save_image(system_test.image_in,
+                            image_output_path + 'image_test_in_hr' + str(item - num_train) + '.png',
+                            imaging_parameters['Image Limits'])
+        system_test.downsample_images(n_images)
         if simulation_parameters['Misalignment'][0]:
             rot = system_test.rotate_images(std=simulation_parameters['Rotation/Scale/Shift'][0],
                                        mode=simulation_parameters['Rotation/Scale/Shift Mode'][0],
@@ -740,6 +766,14 @@ f.close()
 
 # Save trained model
 if not simulation_parameters['Load/Retrain Model'][0] or simulation_parameters['Load/Retrain Model'][1]:
+    # print("Converting flattened data to tensors for saving...\n")
+    # phase_exact_flat_test_tensor = tf.Constant(phase_exact_flat_test)
+    # phase_retrieved_flat_test_tensor = tf.Constant(phase_retrieved_flat_test)
+    # image_flat_test_tensor = tf.Constant(image_flat_test)
+    # phase_exact_flat_train_tensor = tf.Constant(phase_exact_flat_train)
+    # phase_retrieved_flat_train_tensor = tf.Constant(phase_retrieved_flat_train)
+    # image_flat_train_tensor = tf.Constant(image_flat_train)
+    print("Saving model and data...")
     saver.save(session, save_model_path + 'model')
 
 #utils.beep()  # Alert user that script has finished
