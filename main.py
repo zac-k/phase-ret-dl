@@ -184,7 +184,7 @@ hyperparameters = {'Hidden Layer Size': [50000],
                    'Use Convolutional Layers': False,
                    'Number of Epochs': 50,
                    'Initialisation Type': 'identity',
-                   'Specify Parameters':  []  # Only Defocus implemented currently
+                   'Specify Parameters':  ['Defocus']  # Only Defocus implemented currently
                    }
 # 'Pre-remove Offest' removes the mean difference between the exact and retrieved phases for both
 # the training and test sets. Will not work with experimental images.
@@ -200,7 +200,7 @@ simulation_parameters = {'Pre-remove Offset': False,
                          }
 imaging_parameters = {'Window Function Radius': 0.5,
                       'Accelerating Voltage': 300,  # electron accelerating voltage in keV
-                      'Use Multislice': True,
+                      'Use Multislice': False,
                       'Multislice Method': 'files',
                       'Multislice Wavefield Path': 'D:/code/images/multislice/',
                       'Output High Resolution Micrographs': True,
@@ -208,13 +208,13 @@ imaging_parameters = {'Window Function Radius': 0.5,
                       'Multislice Resolution in Pixels': 1024,
                       'Domain Size': 150e-9,  # Width of images in metres
                       'Noise Level': [0.00, 0.00],
-                      'Defocus': [10e-6, 10e-6],
+                      'Defocus': [10e-6, 100e-6],
                       'Error Limits': [-3, 3],
                       'Phase Limits': [-6, 6],
                       'Image Limits': [0, 2]
                       }
 specimen_parameters = {'Use Electrostatic/Magnetic Potential': [True, False],
-                       'Mean Inner Potential': [-5 + 1j, -30 +1j],
+                       'Mean Inner Potential': [-17 + 1j, -17 +1j],
                        'Mass Magnetization': 80,  # emu/g
                        'Density': 5.18  # g/cm^3
                        }
@@ -226,6 +226,8 @@ paths = {'Experimental Data Path': './data/images/experimental/',
          'Save Model Path': './data/output/',
          'Specimen Input Path': './data/specimens/training4/',
          'Details Output Path': './data/output/details/'}
+
+
 
 varied_quantities = []
 for i in range(3):
@@ -410,14 +412,18 @@ if not simulation_parameters['Load/Retrain Model'][0]:
         train_details_file.close()
         if input_type == 'images':
             if n_images == 3 or hyperparameters['Train with In-focus Image']:
-                image_flat_train.append(np.concatenate((system_train.image_under.real.reshape(img_size_flat),
+                flattened_input = np.concatenate((system_train.image_under.real.reshape(img_size_flat),
                                         system_train.image_in.real.reshape(img_size_flat),
-                                        system_train.image_over.real.reshape(img_size_flat))))
+                                        system_train.image_over.real.reshape(img_size_flat)))
             elif n_images == 2:
-                image_flat_train.append(np.concatenate((system_train.image_under.real.reshape(img_size_flat),
-                                        system_train.image_over.real.reshape(img_size_flat))))
-        if 'Defocus' in hyperparameters['Specify Parameters']:
-            image_flat_train.append(local_defocus)
+                flattened_input = np.concatenate((system_train.image_under.real.reshape(img_size_flat),
+                                        system_train.image_over.real.reshape(img_size_flat)))
+
+        specified_parameters = {'Defocus': local_defocus}
+        for parameter in hyperparameters['Specify Parameters']:
+            flattened_input = np.concatenate((flattened_input, (specified_parameters[parameter],)))
+
+        image_flat_train.append(flattened_input)
 
     # Define average error in training set, calculate it, and print output.
     if input_type == 'phases':
@@ -540,14 +546,17 @@ for item in range(num_train, num_test + num_train):
 
     if input_type == 'images':
         if n_images == 3 or hyperparameters['Train with In-focus Image']:
-            image_flat_test.append(np.concatenate((system_test.image_under.real.reshape(img_size_flat),
+            flattened_input = np.concatenate((system_test.image_under.real.reshape(img_size_flat),
                                    system_test.image_in.real.reshape(img_size_flat),
-                                   system_test.image_over.real.reshape(img_size_flat))))
+                                   system_test.image_over.real.reshape(img_size_flat)))
         else:
-            image_flat_test.append(np.concatenate((system_test.image_under.real.reshape(img_size_flat),
-                                   system_test.image_over.real.reshape(img_size_flat))))
-    if 'Defocus' in hyperparameters['Specify Parameters']:
-        image_flat_test.append(local_defocus)
+            flattened_input = np.concatenate((system_test.image_under.real.reshape(img_size_flat),
+                                   system_test.image_over.real.reshape(img_size_flat)))
+    specified_parameters = {'Defocus': local_defocus}
+    for parameter in hyperparameters['Specify Parameters']:
+        flattened_input = np.concatenate((flattened_input, (specified_parameters[parameter],)))
+
+    image_flat_test.append(flattened_input)
 
 # Calculate and print average normalised rms error in test set prior to processing
 # through neural network
