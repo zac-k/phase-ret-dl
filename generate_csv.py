@@ -9,7 +9,7 @@ import csv
 
 
 def single():
-    path = './data/figures/details/'
+    path = './data/misalignment paper/potential variation/5-30/details/'
     prefix = 'test_'
     ext = '.txt'
     n_samples = 100
@@ -27,6 +27,7 @@ def single():
             reader = csv.reader(csvinput, delimiter=' ')
             for j in range(len(sources)):
                 next(reader)
+            next(reader)
             tie_error.append(next(reader)[-1][:-1])
             ann_error.append(next(reader)[-1][:-1])
 
@@ -97,5 +98,5 @@ def multiple():
         writer = csv.writer(output, lineterminator='\n')
         writer.writerows(ann)
 
-multiple()
+single()
 
