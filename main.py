@@ -165,7 +165,13 @@ def flatten_layer(layer):
 
 np.set_printoptions(threshold=np.inf)
 
-
+#########################################
+#    ___      _   _   _                 #
+#   / __| ___| |_| |_(_)_ _  __ _ ___   #
+#   \__ \/ -_)  _|  _| | ' \/ _` (_-<   #
+#   |___/\___|\__|\__|_|_||_\__, /__/   #
+#                           |___/       #
+#########################################
 # Create dict of hyperparameter values, each of which will be assigned to the appropriate
 # variable closer to where they are used. Number of images is the actual number of simulated
 # micrographs. If number of images == 2, 'Train with In-focus Image' uses the approximated
@@ -175,7 +181,7 @@ hyperparameters = {'Hidden Layer Size': [50000],
                    'Input Type': 'images',
                    'Number of Images': 2,
                    'Train with In-focus Image': False,  # False has no effect if n_images == 3
-                   'Train/Valid/Test Split': [1, 0, 2],
+                   'Train/Valid/Test Split': [10, 0, 2],
                    'Start Number': 234,  # Specimen number to start the training set at
                    'Batch Size': 50,
                    'Optimiser Type': 'adam',
@@ -184,7 +190,7 @@ hyperparameters = {'Hidden Layer Size': [50000],
                    'Use Convolutional Layers': False,
                    'Number of Epochs': 50,
                    'Initialisation Type': 'identity',
-                   'Specify Parameters':  ['Defocus']  # Only Defocus implemented currently
+                   'Specify Parameters':  ['Electrostatic Potential']  # 'Defocus', 'Noise', 'Electrostatic Potential', 'Imaginary Potential'
                    }
 # 'Pre-remove Offest' removes the mean difference between the exact and retrieved phases for both
 # the training and test sets. Will not work with experimental images.
@@ -210,11 +216,11 @@ imaging_parameters = {'Window Function Radius': 0.5,
                       'Noise Level': [0.00, 0.00],
                       'Defocus': [10e-6, 100e-6],
                       'Error Limits': [-3, 3],
-                      'Phase Limits': [-6, 6],
+                      'Phase Limits': [-3, 3],
                       'Image Limits': [0, 2]
                       }
 specimen_parameters = {'Use Electrostatic/Magnetic Potential': [True, False],
-                       'Mean Inner Potential': [-17 + 1j, -17 +1j],
+                       'Mean Inner Potential': [-17 + 1j, -1 +1j],
                        'Mass Magnetization': 80,  # emu/g
                        'Density': 5.18  # g/cm^3
                        }
@@ -226,8 +232,20 @@ paths = {'Experimental Data Path': './data/images/experimental/',
          'Save Model Path': './data/output/',
          'Specimen Input Path': './data/specimens/training4/',
          'Details Output Path': './data/output/details/'}
+###################################################################
+#    ___         _        __   ___      _   _   _                 #
+#   | __|_ _  __| |  ___ / _| / __| ___| |_| |_(_)_ _  __ _ ___   #
+#   | _|| ' \/ _` | / _ \  _| \__ \/ -_)  _|  _| | ' \/ _` (_-<   #
+#   |___|_||_\__,_| \___/_|   |___/\___|\__|\__|_|_||_\__, /__/   #
+#                                                     |___/       #
+###################################################################
 
-
+# Do NOT modify the `specified_parameters` dict unless you know what you're doing. The end user settings
+# for these are available in the `hyperparameters` dict under the 'Specified Parameters' key.
+specified_parameters = {'Defocus': 'local_defocus',
+                        'Noise': 'local_noise_level',
+                        'Electrostatic Potential': 'local_mip_real',
+                        'Imaginary Potential': 'local_mip_imag'}
 
 varied_quantities = []
 for i in range(3):
@@ -244,6 +262,7 @@ if specimen_parameters['Mean Inner Potential'][0].imag != specimen_parameters['M
 
 print("The following quantities will be varied: ", varied_quantities)
 print("The following quantities will be specified: ", hyperparameters['Specify Parameters'])
+
 
 pathlib.Path(paths['Details Output Path']).mkdir(parents=True, exist_ok=True)
 for i in simulation_parameters['Rotation/Scale/Shift Mode']:
@@ -319,6 +338,8 @@ if not simulation_parameters['Load/Retrain Model'][0]:
         local_noise_level = np.random.uniform(noise_level[0], noise_level[1])
         local_defocus = np.random.uniform(imaging_parameters['Defocus'][0], imaging_parameters['Defocus'][1])
         local_mip = np.random.uniform(mip[0].real, mip[1].real) + np.random.uniform(mip[0].imag, mip[1].imag) * 1j
+        local_mip_real = local_mip.real
+        local_mip_imag = local_mip.imag
         train_generate_bar.update()
         system_train = phase.PhaseImagingSystem(
                image_size=img_size,
@@ -419,10 +440,9 @@ if not simulation_parameters['Load/Retrain Model'][0]:
                 flattened_input = np.concatenate((system_train.image_under.real.reshape(img_size_flat),
                                         system_train.image_over.real.reshape(img_size_flat)))
 
-        specified_parameters = {'Defocus': local_defocus}
+        # Add specified parameters to end of training input vector
         for parameter in hyperparameters['Specify Parameters']:
-            flattened_input = np.concatenate((flattened_input, (specified_parameters[parameter],)))
-
+            flattened_input = np.concatenate((flattened_input, (locals()[specified_parameters[parameter]],)))
         image_flat_train.append(flattened_input)
 
     # Define average error in training set, calculate it, and print output.
@@ -447,6 +467,8 @@ for item in range(num_train, num_test + num_train):
     local_noise_level = np.random.uniform(noise_level[0], noise_level[1])
     local_defocus = np.random.uniform(imaging_parameters['Defocus'][0], imaging_parameters['Defocus'][1])
     local_mip = np.random.uniform(mip[0].real, mip[1].real) + np.random.uniform(mip[0].imag, mip[1].imag) * 1j
+    local_mip_real = local_mip.real
+    local_mip_imag = local_mip.imag
 
     system_test = phase.PhaseImagingSystem(image_size=img_size,
                                            defocus=local_defocus,
@@ -552,10 +574,10 @@ for item in range(num_train, num_test + num_train):
         else:
             flattened_input = np.concatenate((system_test.image_under.real.reshape(img_size_flat),
                                    system_test.image_over.real.reshape(img_size_flat)))
-    specified_parameters = {'Defocus': local_defocus}
-    for parameter in hyperparameters['Specify Parameters']:
-        flattened_input = np.concatenate((flattened_input, (specified_parameters[parameter],)))
 
+    # Append specified parameters to test input vector
+    for parameter in hyperparameters['Specify Parameters']:
+        flattened_input = np.concatenate((flattened_input, (locals()[specified_parameters[parameter]],)))
     image_flat_test.append(flattened_input)
 
 # Calculate and print average normalised rms error in test set prior to processing
