@@ -190,7 +190,8 @@ hyperparameters = {'Hidden Layer Size': [50000],
                    'Use Convolutional Layers': False,
                    'Number of Epochs': 50,
                    'Initialisation Type': 'identity',
-                   'Specify Parameters':  ['Electrostatic Potential']  # 'Defocus', 'Noise', 'Electrostatic Potential', 'Imaginary Potential'
+                   'Specify Parameters':  ['Defocus'],  # 'Defocus', 'Noise', 'Electrostatic Potential', 'Imaginary Potential',
+                   'Specified Parameters Initialisation': [1e8]  # Initialisation weight of each parameter in order
                    }
 # 'Pre-remove Offest' removes the mean difference between the exact and retrieved phases for both
 # the training and test sets. Will not work with experimental images.
@@ -246,6 +247,7 @@ specified_parameters = {'Defocus': 'local_defocus',
                         'Noise': 'local_noise_level',
                         'Electrostatic Potential': 'local_mip_real',
                         'Imaginary Potential': 'local_mip_imag'}
+specified_init = hyperparameters['Specified Parameters Initialisation']
 
 varied_quantities = []
 for i in range(3):
@@ -441,8 +443,9 @@ if not simulation_parameters['Load/Retrain Model'][0]:
                                         system_train.image_over.real.reshape(img_size_flat)))
 
         # Add specified parameters to end of training input vector
-        for parameter in hyperparameters['Specify Parameters']:
-            flattened_input = np.concatenate((flattened_input, (locals()[specified_parameters[parameter]],)))
+        for i,parameter in enumerate(hyperparameters['Specify Parameters']):
+            flattened_input = np.concatenate((flattened_input, (locals()[specified_parameters[parameter]]
+                                                                * specified_init[i],)))
         image_flat_train.append(flattened_input)
 
     # Define average error in training set, calculate it, and print output.
@@ -576,8 +579,9 @@ for item in range(num_train, num_test + num_train):
                                    system_test.image_over.real.reshape(img_size_flat)))
 
     # Append specified parameters to test input vector
-    for parameter in hyperparameters['Specify Parameters']:
-        flattened_input = np.concatenate((flattened_input, (locals()[specified_parameters[parameter]],)))
+    for i,parameter in enumerate(hyperparameters['Specify Parameters']):
+        flattened_input = np.concatenate((flattened_input, (locals()[specified_parameters[parameter]]
+                                                                   * specified_init[i],)))
     image_flat_test.append(flattened_input)
 
 # Calculate and print average normalised rms error in test set prior to processing
