@@ -47,10 +47,18 @@ def new_fc_layer(in_vector,         # The previous Layer
                  num_inputs,    # Number of inputs from prev layer
                  num_outputs,   # Number of outputs
                  activation_function,      # Tensorflow activation function to use
-                 init_type):       # Randomise weights and biases?
+                 init_type,
+                 layer_number):       # Randomise weights and biases?
     # Create weights and biases
     weights = new_weights(shape=[num_inputs, num_outputs], init_type=init_type)
     biases = new_biases(length=num_outputs, init_type=init_type)
+
+
+
+    if layer_number==0 and len(hyperparameters['Specify Parameters']) != 0:
+        for i, parameter in enumerate(hyperparameters['Specify Parameters']):
+            specification_vector = tf.Variable(tf.constant(hyperparameters['Specified Parameters Initialisation'], shape=(1,num_outputs)))
+            weights = tf.concat([weights, specification_vector], 0)
 
     # Calculate output
     layer = tf.matmul(in_vector, weights) + biases
@@ -58,7 +66,6 @@ def new_fc_layer(in_vector,         # The previous Layer
     # Rectify
     if activation_function is not None:
         layer = activation_function(layer)
-
     return layer
 
 
@@ -81,7 +88,8 @@ def fc_layers(hyperparameters, input_for_first_fc_layer, num_inputs_for_first_fc
                                         hidden_input_size,
                                         hidden_layer_size[i],
                                         activation_function=hyperparameters['Activation Functions'][i],
-                                        init_type=hyperparameters['Initialisation Type'])
+                                        init_type=hyperparameters['Initialisation Type'],
+                                        layer_number=i)
 
     if num_hidden_layers == 0:
         penultimate_layer = input_for_first_fc_layer
@@ -94,7 +102,8 @@ def fc_layers(hyperparameters, input_for_first_fc_layer, num_inputs_for_first_fc
                           penultimate_layer_size,
                           img_size_flat,
                           activation_function=None,
-                          init_type=hyperparameters['Initialisation Type']
+                          init_type=hyperparameters['Initialisation Type'],
+                          layer_number=-1
                           )
     return output
 
@@ -191,7 +200,7 @@ hyperparameters = {'Hidden Layer Size': [50000],
                    'Number of Epochs': 50,
                    'Initialisation Type': 'identity',
                    'Specify Parameters':  ['Defocus'],  # 'Defocus', 'Noise', 'Electrostatic Potential', 'Imaginary Potential',
-                   'Specified Parameters Initialisation': [1e8]  # Initialisation weight of each parameter in order
+                   'Specified Parameters Initialisation': [1e4]  # Initialisation weight of each parameter in order
                    }
 # 'Pre-remove Offest' removes the mean difference between the exact and retrieved phases for both
 # the training and test sets. Will not work with experimental images.
@@ -248,6 +257,8 @@ specified_parameters = {'Defocus': 'local_defocus',
                         'Electrostatic Potential': 'local_mip_real',
                         'Imaginary Potential': 'local_mip_imag'}
 specified_init = hyperparameters['Specified Parameters Initialisation']
+
+assert len(hyperparameters['Specify Parameters'] == len(hyperparameters['Specified Parameters Initialisation'])
 
 varied_quantities = []
 for i in range(3):
@@ -444,8 +455,7 @@ if not simulation_parameters['Load/Retrain Model'][0]:
 
         # Add specified parameters to end of training input vector
         for i,parameter in enumerate(hyperparameters['Specify Parameters']):
-            flattened_input = np.concatenate((flattened_input, (locals()[specified_parameters[parameter]]
-                                                                * specified_init[i],)))
+            flattened_input = np.concatenate((flattened_input, (locals()[specified_parameters[parameter]],)))
         image_flat_train.append(flattened_input)
 
     # Define average error in training set, calculate it, and print output.
@@ -580,8 +590,7 @@ for item in range(num_train, num_test + num_train):
 
     # Append specified parameters to test input vector
     for i,parameter in enumerate(hyperparameters['Specify Parameters']):
-        flattened_input = np.concatenate((flattened_input, (locals()[specified_parameters[parameter]]
-                                                                   * specified_init[i],)))
+        flattened_input = np.concatenate((flattened_input, (locals()[specified_parameters[parameter]],)))
     image_flat_test.append(flattened_input)
 
 # Calculate and print average normalised rms error in test set prior to processing
@@ -600,14 +609,14 @@ if input_type in ['images', 'dual']:
     else:
         n_training_images = n_images
 
-    input_size = n_training_images * img_size_flat + len(hyperparameters['Specify Parameters'])
+    input_size = n_training_images * img_size_flat
     num_channels = n_training_images
 elif input_type == 'phases':
-    input_size = img_size_flat + len(hyperparameters['Specify Parameters'])
+    input_size = img_size_flat
     num_channels = 1
 
 # Define placeholder variables
-x = tf.placeholder(tf.float32, [None, input_size])
+x = tf.placeholder(tf.float32, [None, input_size + len(hyperparameters['Specify Parameters'])])
 y_true = tf.placeholder(tf.float32, [None, img_size_flat])
 
 # Define convolutional layers
@@ -630,7 +639,9 @@ else:
 
 
 # Define fully connected layers
-output = fc_layers(hyperparameters, input_for_first_fc_layer, num_inputs_for_first_fc_layer)
+output = fc_layers(hyperparameters,
+                   input_for_first_fc_layer,
+                   num_inputs_for_first_fc_layer)
 
 # Define cost function
 cost = tf.reduce_mean(tf.squared_difference(y_true, output))
