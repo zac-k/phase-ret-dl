@@ -258,7 +258,7 @@ specified_parameters = {'Defocus': 'local_defocus',
                         'Imaginary Potential': 'local_mip_imag'}
 specified_init = hyperparameters['Specified Parameters Initialisation']
 
-assert len(hyperparameters['Specify Parameters'] == len(hyperparameters['Specified Parameters Initialisation'])
+assert len(hyperparameters['Specify Parameters']) == len(hyperparameters['Specified Parameters Initialisation'])
 
 varied_quantities = []
 for i in range(3):
