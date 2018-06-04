@@ -56,8 +56,8 @@ def new_fc_layer(in_vector,         # The previous Layer
 
 
     if layer_number==0 and len(hyperparameters['Specify Parameters']) != 0:
-        for i, parameter in enumerate(hyperparameters['Specify Parameters']):
-            specification_vector = tf.Variable(tf.constant(hyperparameters['Specified Parameters Initialisation'], shape=(1,num_outputs)))
+        for spec in hyperparameters['Specified Parameters Initialisation']:
+            specification_vector = tf.Variable(tf.constant(float(spec), shape=(1,num_outputs)))
             weights = tf.concat([weights, specification_vector], 0)
 
     # Calculate output
@@ -257,8 +257,8 @@ specified_parameters = {'Defocus': 'local_defocus',
                         'Electrostatic Potential': 'local_mip_real',
                         'Imaginary Potential': 'local_mip_imag'}
 specified_init = hyperparameters['Specified Parameters Initialisation']
-
-assert len(hyperparameters['Specify Parameters']) == len(hyperparameters['Specified Parameters Initialisation'])
+if hyperparameters['Specify Parameters'] != []:
+    assert len(hyperparameters['Specify Parameters']) == len(hyperparameters['Specified Parameters Initialisation'])
 
 varied_quantities = []
 for i in range(3):
