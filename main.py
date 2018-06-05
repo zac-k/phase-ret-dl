@@ -235,6 +235,7 @@ def main():
                           }
     specimen_parameters = {'Use Electrostatic/Magnetic Potential': [True, False],
                            'Mean Inner Potential': [-17 + 1j, -5 +1j],
+                           'Electrostatic Potential Error': 0.1  # Fractional std error in test set only
                            'Mass Magnetization': 80,  # emu/g
                            'Density': 5.18  # g/cm^3
                            }
@@ -503,13 +504,17 @@ def main():
         local_mip = np.random.uniform(mip[0].real, mip[1].real) + np.random.uniform(mip[0].imag, mip[1].imag) * 1j
         local_mip_real = local_mip.real
         local_mip_imag = local_mip.imag
+        local_mip_true = np.random.normal(local_mip_real,
+                                          specimen_parameters['Electrostatic Potential Error']
+                                          * local_mip_real) + local_mip_imag*1j
+
 
         system_test = phase.PhaseImagingSystem(image_size=img_size,
                                                defocus=local_defocus,
                                                image_width=imaging_parameters['Domain Size'],
                                                energy=imaging_parameters['Accelerating Voltage']*1e3,
                                                specimen_file=specimen_files[item],
-                                               mip=local_mip,
+                                               mip=local_mip_true,
                                                is_attenuating=True,
                                                noise_level=local_noise_level,
                                                use_multislice=use_multislice,
@@ -596,7 +601,8 @@ def main():
             test_details_file.write("Shift: NA" + '\n')
         test_details_file.write("Noise: {0: .5%}".format(local_noise_level) + '\n')
         test_details_file.write("Defocus: {0: .5f}".format(local_defocus * 1e6) + '\n')
-        test_details_file.write("Potential: {0: .5f}".format(local_mip.real) + '\n')
+        test_details_file.write("Specified Potential: {0: .5f}".format(local_mip.real) + '\n')
+        test_details_file.write("True Potential: {0: .5f}".format(local_mip_true.real) + '\n')
         test_details_file.write("Imaginary: {0: .5f}".format(local_mip.imag) + '\n')
         test_details_file.close()
 
