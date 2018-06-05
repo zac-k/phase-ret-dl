@@ -111,7 +111,7 @@ def fc_layers(parameters, input_for_first_fc_layer, num_inputs_for_first_fc_laye
                           )
     return output
 
-def train_model(hyperparameters):
+def train_model(hyperparameters, images):
     print('Training...')
 
     # Set batch variables
@@ -125,10 +125,10 @@ def train_model(hyperparameters):
             train_bar.update()
             if (i + 1) * batch_size < num_train:
                 if hyperparameters['Input Type'] == 'images':
-                    x_batch = image_flat_train[i * batch_size: (i + 1) * batch_size]
+                    x_batch = images['image flat train'][i * batch_size: (i + 1) * batch_size]
                 elif hyperparameters['Input Type'] == 'phases':
-                    x_batch = phase_retrieved_flat_train[i * batch_size: (i + 1) * batch_size]
-                y_true_batch = phase_exact_flat_train[i * batch_size: (i + 1) * batch_size]
+                    x_batch = images['phase retrieved flat train'][i * batch_size: (i + 1) * batch_size]
+                y_true_batch = images['phase exact flat train'][i * batch_size: (i + 1) * batch_size]
                 feed_dict_train = {x: x_batch,
                                    y_true: y_true_batch}
 
@@ -194,7 +194,7 @@ def main():
                        'Input Type': 'images',
                        'Number of Images': 2,
                        'Train with In-focus Image': False,  # False has no effect if n_images == 3
-                       'Train/Valid/Test Split': [10, 0, 2],
+                       'Train/Valid/Test Split': [5, 0, 1],
                        'Start Number': 234,  # Specimen number to start the training set at
                        'Batch Size': 50,
                        'Optimiser Type': 'adam',
@@ -203,8 +203,8 @@ def main():
                        'Use Convolutional Layers': False,
                        'Number of Epochs': 50,
                        'Initialisation Type': 'identity',
-                       'Specify Parameters':  ['Defocus'],  # 'Defocus', 'Noise', 'Electrostatic Potential', 'Imaginary Potential',
-                       'Specified Parameters Initialisation': [1e4]  # Initialisation weight of each parameter in order
+                       'Specify Parameters':  ['Electrostatic Potential'],  # 'Defocus', 'Noise', 'Electrostatic Potential', 'Imaginary Potential',
+                       'Specified Parameters Initialisation': [0]  # Initialisation weight of each parameter in order
                        }
     # 'Pre-remove Offest' removes the mean difference between the exact and retrieved phases for both
     # the training and test sets. Will not work with experimental images.
@@ -228,13 +228,13 @@ def main():
                           'Multislice Resolution in Pixels': 1024,
                           'Domain Size': 150e-9,  # Width of images in metres
                           'Noise Level': [0.00, 0.00],
-                          'Defocus': [10e-6, 100e-6],
+                          'Defocus': [10e-6, 10e-6],
                           'Error Limits': [-3, 3],
                           'Phase Limits': [-3, 3],
                           'Image Limits': [0, 2]
                           }
     specimen_parameters = {'Use Electrostatic/Magnetic Potential': [True, False],
-                           'Mean Inner Potential': [-17 + 1j, -1 +1j],
+                           'Mean Inner Potential': [-17 + 1j, -5 +1j],
                            'Mass Magnetization': 80,  # emu/g
                            'Density': 5.18  # g/cm^3
                            }
@@ -266,6 +266,18 @@ def main():
                   'Specimen': specimen_parameters,
                   'Paths': paths}
     specified_init = hyperparameters['Specified Parameters Initialisation']
+    assert  hyperparameters['Optimiser Type'] in ('adam',
+                                                  'gradient descent',
+                                                  'adagrad',
+                                                  'adadelta',
+                                                  'adagrad da',
+                                                  'momentum',
+                                                  'ftrl',
+                                                  'proximal gradient descent',
+                                                  'proximal adagrad',
+                                                  'rms prop')
+
+
     if hyperparameters['Specify Parameters'] != []:
         assert len(hyperparameters['Specify Parameters']) == len(hyperparameters['Specified Parameters Initialisation'])
 
@@ -697,6 +709,10 @@ def main():
         feed_dict_test = {x: image_flat_train,
                           y_true: phase_exact_flat_train}
 
+    images_dict = {'image flat train': image_flat_train,
+                   'phase retrieved flat train': phase_retrieved_flat_train,
+                   'phase exact flat train': phase_exact_flat_train}
+
     if simulation_parameters['Load/Retrain Model'][0]:
         saver.restore(session, load_model_path + 'model')
         if simulation_parameters['Load/Retrain Model'][1]:
@@ -707,7 +723,7 @@ def main():
             mean_exact_train = np.mean(phase_exact_flat_train, axis=0)
 
             # Train the model
-            train_model(hyperparameters)
+            train_model(hyperparameters, images_dict)
     else:
         # Initialise variables
         session.run(tf.global_variables_initializer())
@@ -716,7 +732,7 @@ def main():
         mean_exact_train = np.mean(phase_exact_flat_train, axis=0)
 
         # Train the model
-        train_model(hyperparameters)
+        train_model(hyperparameters, images_dict)
 
     if input_type == 'dual':
         feed_dict_train2 = {
