@@ -506,7 +506,7 @@ def main():
         local_mip_imag = local_mip.imag
         local_mip_true = np.random.normal(local_mip_real,
                                           specimen_parameters['Electrostatic Potential Error']
-                                          * local_mip_real) + local_mip_imag*1j
+                                          * np.abs(local_mip_real)) + local_mip_imag*1j
 
 
         system_test = phase.PhaseImagingSystem(image_size=img_size,
