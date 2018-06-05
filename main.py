@@ -235,7 +235,7 @@ def main():
                           }
     specimen_parameters = {'Use Electrostatic/Magnetic Potential': [True, False],
                            'Mean Inner Potential': [-17 + 1j, -5 +1j],
-                           'Electrostatic Potential Error': 0.1  # Fractional std error in test set only
+                           'Electrostatic Potential Error': 0.1,  # Fractional std error in test set only
                            'Mass Magnetization': 80,  # emu/g
                            'Density': 5.18  # g/cm^3
                            }
