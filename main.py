@@ -111,7 +111,7 @@ def fc_layers(parameters, input_for_first_fc_layer, num_inputs_for_first_fc_laye
                           )
     return output
 
-def train_model(hyperparameters, images):
+def train_model(hyperparameters, images, x, y_true, session, optimizer):
     print('Training...')
 
     # Set batch variables
@@ -194,11 +194,11 @@ def main():
                        'Input Type': 'images',
                        'Number of Images': 2,
                        'Train with In-focus Image': False,  # False has no effect if n_images == 3
-                       'Train/Valid/Test Split': [5, 0, 1],
-                       'Start Number': 234,  # Specimen number to start the training set at
+                       'Train/Valid/Test Split': [5000, 0, 100],
+                       'Start Number': 0,  # Specimen number to start the training set at
                        'Batch Size': 50,
-                       'Optimiser Type': 'adam',
-                       'Learning Rate': 1e-4,
+                       'Optimiser Type': 'gradient descent',
+                       'Learning Rate': 0.5,
                        'Activation Functions': [tf.nn.tanh],
                        'Use Convolutional Layers': False,
                        'Number of Epochs': 50,
@@ -230,12 +230,12 @@ def main():
                           'Noise Level': [0.00, 0.00],
                           'Defocus': [10e-6, 10e-6],
                           'Error Limits': [-3, 3],
-                          'Phase Limits': [-3, 3],
+                          'Phase Limits': [-6, 6],
                           'Image Limits': [0, 2]
                           }
     specimen_parameters = {'Use Electrostatic/Magnetic Potential': [True, False],
-                           'Mean Inner Potential': [-17 + 1j, -5 +1j],
-                           'Electrostatic Potential Error': 0.1,  # Fractional std error in test set only
+                           'Mean Inner Potential': [-30 + 1j, -5 +1j],
+                           'Electrostatic Potential Error': 0.0,  # Fractional std error in test set only
                            'Mass Magnetization': 80,  # emu/g
                            'Density': 5.18  # g/cm^3
                            }
@@ -504,9 +504,12 @@ def main():
         local_mip = np.random.uniform(mip[0].real, mip[1].real) + np.random.uniform(mip[0].imag, mip[1].imag) * 1j
         local_mip_real = local_mip.real
         local_mip_imag = local_mip.imag
-        local_mip_true = np.random.normal(local_mip_real,
-                                          specimen_parameters['Electrostatic Potential Error']
-                                          * np.abs(local_mip_real)) + local_mip_imag*1j
+        if specimen_parameters['Electrostatic Potential Error'] == 0:
+            local_mip_true = local_mip_real
+        else:
+            local_mip_true = np.random.normal(local_mip_real,
+                                              specimen_parameters['Electrostatic Potential Error']
+                                              * np.abs(local_mip_real)) + local_mip_imag*1j
 
 
         system_test = phase.PhaseImagingSystem(image_size=img_size,
@@ -729,7 +732,7 @@ def main():
             mean_exact_train = np.mean(phase_exact_flat_train, axis=0)
 
             # Train the model
-            train_model(hyperparameters, images_dict)
+            train_model(hyperparameters, images_dict, x, y_true, session, optimizer)
     else:
         # Initialise variables
         session.run(tf.global_variables_initializer())
@@ -738,7 +741,7 @@ def main():
         mean_exact_train = np.mean(phase_exact_flat_train, axis=0)
 
         # Train the model
-        train_model(hyperparameters, images_dict)
+        train_model(hyperparameters, images_dict, x, y_true, session, optimizer)
 
     if input_type == 'dual':
         feed_dict_train2 = {
