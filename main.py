@@ -234,8 +234,8 @@ def main():
                           'Image Limits': [0, 2]
                           }
     specimen_parameters = {'Use Electrostatic/Magnetic Potential': [True, False],
-                           'Mean Inner Potential': [-30 + 1j, -5 +1j],
-                           'Electrostatic Potential Error': 0.0,  # Fractional std error in test set only
+                           'Mean Inner Potential': [-30 + 1j, -5 + 1j],
+                           'Electrostatic Potential Error': 0.4,  # Fractional std error in test set only
                            'Mass Magnetization': 80,  # emu/g
                            'Density': 5.18  # g/cm^3
                            }
@@ -505,7 +505,7 @@ def main():
         local_mip_real = local_mip.real
         local_mip_imag = local_mip.imag
         if specimen_parameters['Electrostatic Potential Error'] == 0:
-            local_mip_true = local_mip_real
+            local_mip_true = local_mip
         else:
             local_mip_true = np.random.normal(local_mip_real,
                                               specimen_parameters['Electrostatic Potential Error']
