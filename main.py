@@ -197,8 +197,8 @@ def main():
                        'Train/Valid/Test Split': [5000, 0, 100],
                        'Start Number': 0,  # Specimen number to start the training set at
                        'Batch Size': 50,
-                       'Optimiser Type': 'gradient descent',
-                       'Learning Rate': 0.5,
+                       'Optimiser Type': 'adam',
+                       'Learning Rate': 1e-4,
                        'Activation Functions': [tf.nn.tanh],
                        'Use Convolutional Layers': False,
                        'Number of Epochs': 50,
@@ -235,7 +235,7 @@ def main():
                           }
     specimen_parameters = {'Use Electrostatic/Magnetic Potential': [True, False],
                            'Mean Inner Potential': [-30 + 1j, -5 + 1j],
-                           'Electrostatic Potential Error': 0.4,  # Fractional std error in test set only
+                           'Electrostatic Potential Error (Train/Test)': [0.50, 0.50],
                            'Mass Magnetization': 80,  # emu/g
                            'Density': 5.18  # g/cm^3
                            }
@@ -375,6 +375,13 @@ def main():
             local_mip = np.random.uniform(mip[0].real, mip[1].real) + np.random.uniform(mip[0].imag, mip[1].imag) * 1j
             local_mip_real = local_mip.real
             local_mip_imag = local_mip.imag
+
+            if specimen_parameters['Electrostatic Potential Error (Train/Test)'][0] == 0:
+                local_mip_true = local_mip
+            else:
+                local_mip_true = np.random.normal(local_mip_real,
+                                                  specimen_parameters['Electrostatic Potential Error (Train/Test)'][0]
+                                                  * np.abs(local_mip_real)) + local_mip_imag * 1j
             train_generate_bar.update()
             system_train = phase.PhaseImagingSystem(
                    image_size=img_size,
@@ -382,7 +389,7 @@ def main():
                    image_width=imaging_parameters['Domain Size'],
                    energy=imaging_parameters['Accelerating Voltage']*1e3,
                    specimen_file=specimen_files[item],
-                   mip=local_mip,
+                   mip=local_mip_true,
                    is_attenuating=True,
                    noise_level=local_noise_level,
                    use_multislice=use_multislice,
@@ -464,6 +471,7 @@ def main():
             train_details_file.write("Noise: {0: .5%}".format(local_noise_level) + '\n')
             train_details_file.write("Defocus: {0: .5f}".format(local_defocus * 1e6) + '\n')
             train_details_file.write("Potential: {0: .5f}".format(local_mip.real) + '\n')
+            train_details_file.write("True Potential: {0: .5f}".format(local_mip_true.real) + '\n')
             train_details_file.write("Imaginary: {0: .5f}".format(local_mip.imag) + '\n')
             train_details_file.close()
             if input_type == 'images':
@@ -504,11 +512,11 @@ def main():
         local_mip = np.random.uniform(mip[0].real, mip[1].real) + np.random.uniform(mip[0].imag, mip[1].imag) * 1j
         local_mip_real = local_mip.real
         local_mip_imag = local_mip.imag
-        if specimen_parameters['Electrostatic Potential Error'] == 0:
+        if specimen_parameters['Electrostatic Potential Error (Train/Test)'][1] == 0:
             local_mip_true = local_mip
         else:
             local_mip_true = np.random.normal(local_mip_real,
-                                              specimen_parameters['Electrostatic Potential Error']
+                                              specimen_parameters['Electrostatic Potential Error (Train/Test)'][1]
                                               * np.abs(local_mip_real)) + local_mip_imag*1j
 
 
