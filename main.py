@@ -379,9 +379,15 @@ def main():
             if specimen_parameters['Electrostatic Potential Error (Train/Test)'][0] == 0:
                 local_mip_true = local_mip
             else:
-                local_mip_true = np.random.normal(local_mip_real,
-                                                  specimen_parameters['Electrostatic Potential Error (Train/Test)'][0]
-                                                  * np.abs(local_mip_real)) + local_mip_imag * 1j
+
+
+                local_mip_true = utils.truncated_gaussian(mip[0].real,
+                                                    mip[1].real,
+                                                    local_mip_real,
+                                                    specimen_parameters['Electrostatic Potential Error (Train/Test)'][0] * np.abs(local_mip_real)
+                                                    ) + local_mip_imag * 1j
+
+
             train_generate_bar.update()
             system_train = phase.PhaseImagingSystem(
                    image_size=img_size,
@@ -515,9 +521,11 @@ def main():
         if specimen_parameters['Electrostatic Potential Error (Train/Test)'][1] == 0:
             local_mip_true = local_mip
         else:
-            local_mip_true = np.random.normal(local_mip_real,
-                                              specimen_parameters['Electrostatic Potential Error (Train/Test)'][1]
-                                              * np.abs(local_mip_real)) + local_mip_imag*1j
+            local_mip_true = utils.truncated_gaussian(mip[0].real,
+                                                      mip[1].real,
+                                                      local_mip_real,
+                                                      specimen_parameters['Electrostatic Potential Error (Train/Test)'][1] * np.abs(local_mip_real)
+                                                      ) + local_mip_imag * 1j
 
 
         system_test = phase.PhaseImagingSystem(image_size=img_size,

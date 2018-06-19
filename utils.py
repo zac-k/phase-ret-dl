@@ -1,5 +1,5 @@
 import numpy as np
-
+import scipy
 
 def normalised_rms_error(exact, reconstructed):
 
@@ -73,3 +73,6 @@ def import_micrograph(micrograph_file, pix):
             for j in range(pix):
                 image_temp[i, j] = float(line[j])
     return image_temp
+
+def truncated_gaussian(a, b, mu, sigma):
+    return scipy.stats.truncnorm((a - mu)/sigma, (b - mu)/sigma, loc=mu, scale=sigma)
