@@ -75,4 +75,4 @@ def import_micrograph(micrograph_file, pix):
     return image_temp
 
 def truncated_gaussian(a, b, mu, sigma):
-    return scipy.stats.truncnorm((a - mu)/sigma, (b - mu)/sigma, loc=mu, scale=sigma)
+    return scipy.stats.truncnorm.rvs((a - mu)/sigma, (b - mu)/sigma, loc=mu, scale=sigma)
